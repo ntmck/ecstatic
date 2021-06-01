@@ -21,20 +21,41 @@ For more details see: <http://www.gnu.org/licenses/>.
 mod entity;
 mod component;
 mod system;
+mod data;
 
-use entity::{Entity, entity_factory::EntityFactory};
-
+use entity::*;
 use component::*;
-use system::*;
+pub use data::*;
+
+//use system::*;
+
+#[derive(Debug)]
+pub enum Action {
+    Insert,
+    Update,
+    Remove,
+    Free,
+}
+
+#[derive(Debug)]
+pub enum Component {
+    Position(Option<Vec3>),
+    Rotation(Option<Vec3>),
+    Init(Option<Init>),
+    Update(Option<Update>),
+    Destroy(Option<Destroy>),
+}
 
 pub struct Ecs {
     entity_factory: EntityFactory,
+    component_factory: ComponentFactory,
 }
 
 impl Ecs {
     pub fn new() -> Ecs {
         Ecs {
             entity_factory: EntityFactory::new(),
+            component_factory: ComponentFactory::new(),
         }
     }
 
@@ -46,12 +67,30 @@ impl Ecs {
 
     //Should call entity's on_destroy function component.
     pub fn destroy_entity(&mut self, entity: Entity) -> Result<(), ErrEcs> {
+        self.entity_factory.authenticate(&entity)?;
         self.entity_factory.free(entity)
+    }
+
+    //Entity-Component Action
+    pub fn ecact(&mut self, act: Action, entity: &mut Entity, cmp: Option<Component>) -> Result<(), ErrEcs> {
+        match act {
+            Action::Insert => {
+                let ucmp = if let Some(ucmp) = cmp {
+                    self.component_factory.insert_component(entity, ucmp);
+                    return Ok(())
+                } else { return Err(ErrEcs::EcactMissingComponent(format!("Missing component for action: {:#?}", act))) };
+            },
+            Action::Update => Ok(()),
+            Action::Remove => Ok(()),
+            Action::Free => Ok(()),
+        }
     }
 }
 #[derive(Debug)]
 pub enum ErrEcs {
+    EcactMissingComponent(String),
+
     EntityFactoryOwnerAuthNotFound(String),
     EntityFactoryActiveEntityNotFound(String),
-    EntityFactoryBadToken(String),
+    EntityFactoryWrongIdForToken(String),
 }
