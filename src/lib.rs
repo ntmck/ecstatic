@@ -46,6 +46,30 @@ pub enum Component {
     Destroy(Option<Destroy>),
 }
 
+#[macro_export]
+macro_rules! position {
+    () => {
+        {
+            Some(Component::Position(Some(Vec3{x: 0f32, y: 0f32, z: 0f32})))
+        }
+    };
+    ($x:expr) => {
+        {
+            Some(Component::Position(Some(Vec3{x: $x as f32, y: 0f32, z: 0f32})))
+        }
+    };
+    ($x:expr, $y:expr) => {
+        {
+            Some(Component::Position(Some(Vec3{x: $x as f32, y: $y as f32, z: 0f32})))
+        }
+    };
+    ($x:expr, $y:expr, $z:expr) => {
+        {
+            Some(Component::Position(Some(Vec3{x: $x as f32, y: $y as f32, z: $z as f32})))
+        }
+    };
+}
+
 pub struct Ecs {
     entity_factory: EntityFactory,
     component_factory: ComponentFactory,
