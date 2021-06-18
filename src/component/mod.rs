@@ -6,6 +6,7 @@ use std::collections::HashSet;
 
 use crate::data::*;
 
+//storage for the underlying type of a component.
 pub struct ComponentBank {
     positions: Vec<Option<Vec3>>,
     rotations: Vec<Option<Vec3>>,
@@ -14,10 +15,16 @@ pub struct ComponentBank {
     destroys: Vec<Option<Destroy>>,
 }
 
+//indicies into ComponentBank
 pub struct PackedBank {
-    positions: HashSet<u32>,
-    rotations: HashSet<u32>,
-    inits: HashSet<u32>,
-    updates: HashSet<u32>,
-    destroys: HashSet<u32>,
+    positions: HashSet<usize>,
+    rotations: HashSet<usize>,
+    inits: HashSet<usize>,
+    updates: HashSet<usize>,
+    destroys: HashSet<usize>,
+}
+
+pub struct ComponentStorage {
+    bank: ComponentBank,
+    packed: PackedBank,
 }

@@ -46,26 +46,27 @@ pub enum Component {
     Destroy(Option<Destroy>),
 }
 
+//Refactor to allow rotation/position to share the same underlying macro?
 #[macro_export]
 macro_rules! position {
     () => {
         {
-            Some(Component::Position(Some(Vec3{x: 0f32, y: 0f32, z: 0f32})))
+            Component::Position(Some(Vec3{x: 0f32, y: 0f32, z: 0f32}))
         }
     };
     ($x:expr) => {
         {
-            Some(Component::Position(Some(Vec3{x: $x as f32, y: 0f32, z: 0f32})))
+            Component::Position(Some(Vec3{x: $x as f32, y: 0f32, z: 0f32}))
         }
     };
     ($x:expr, $y:expr) => {
         {
-            Some(Component::Position(Some(Vec3{x: $x as f32, y: $y as f32, z: 0f32})))
+            Component::Position(Some(Vec3{x: $x as f32, y: $y as f32, z: 0f32}))
         }
     };
     ($x:expr, $y:expr, $z:expr) => {
         {
-            Some(Component::Position(Some(Vec3{x: $x as f32, y: $y as f32, z: $z as f32})))
+            Component::Position(Some(Vec3{x: $x as f32, y: $y as f32, z: $z as f32}))
         }
     };
 }
@@ -96,23 +97,31 @@ impl Ecs {
     }
 
     //Entity-Component Action
-    pub fn ecact(&mut self, act: Action, entity: &mut Entity, cmp: Option<Component>) -> Result<(), ErrEcs> {
+    pub fn ecact(&mut self, act: Action, entity: &mut Entity, cmp: Component) -> Result<(), ErrEcs> {
         match act {
             Action::Insert => {
-                let ucmp = if let Some(ucmp) = cmp {
-                    self.component_factory.insert_component(entity, ucmp);
-                    return Ok(())
-                } else { return Err(ErrEcs::EcactMissingComponent(format!("Missing component for action: {:#?}", act))) };
+                self.component_factory.insert_component(entity, cmp);
+                Ok(())
             },
             Action::Update => Ok(()),
             Action::Remove => Ok(()),
             Action::Free => Ok(()),
         }
     }
+
+    //Entity-System Action
+    pub fn esact(&mut self) {
+
+    }
+
+    //Component-System Action
+    pub fn csact(&mut self) {
+
+    }
 }
 #[derive(Debug)]
 pub enum ErrEcs {
-    EcactMissingComponent(String),
+    ComponentFactoryEntityAlreadyHasComponent(String),
 
     EntityFactoryOwnerAuthNotFound(String),
     EntityFactoryActiveEntityNotFound(String),
