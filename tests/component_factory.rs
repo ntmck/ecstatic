@@ -14,17 +14,15 @@ pub fn test_position_macro() {
     assert!(pos4.x == 1f32 && pos4.y == 2f32 && pos4.z == 3f32, "pos4");
 }
 
-fn unwrap_position(wrap: Option<Component>) -> Vec3 {
-    if let Some(comp) = wrap {
-        match comp {
-            Component::Position(opv3) => {
-                if let Some(v3) = opv3 {
-                    v3
-                } else { panic!("unwrap_position: Vec3 is None.") }
-            },
-            _ => panic!("unwrap_position: Component is not a position component.")
-        }
-    } else { panic!("unwrap_position: Component is None.") }
+fn unwrap_position(pos: Component) -> Vec3 {
+    match pos {
+        Component::Position(opv3) => {
+            if let Some(v3) = opv3 {
+                v3
+            } else { panic!("unwrap_position: Vec3 is None.") }
+        },
+        _ => panic!("unwrap_position: Component is not a position component.")
+    }
 }
 
 #[test]
@@ -35,4 +33,5 @@ pub fn test_insert_component() {
         Ok(_) => (),
         Err(e) => assert!(false, "{:#?}", e)
     }
+    //TODO: Check to see if the position is actually there.
 }
