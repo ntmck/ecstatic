@@ -2,7 +2,7 @@ pub mod component_factory;
 pub use component_factory::ComponentFactory;
 
 use std::vec::Vec;
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 
 use crate::data::*;
 
@@ -24,7 +24,21 @@ pub struct PackedBank {
     destroys: HashSet<usize>,
 }
 
+pub struct FreeIndices {
+    pos_next: usize,
+    rot_next: usize,
+    init_next: usize,
+    update_next: usize,
+    destroy_next: usize,
+    positions: VecDeque<usize>,
+    rotations: VecDeque<usize>,
+    inits: VecDeque<usize>,
+    updates: VecDeque<usize>,
+    destroys: VecDeque<usize>,
+}
+
 pub struct ComponentStorage {
     bank: ComponentBank,
     packed: PackedBank,
+    free: FreeIndices,
 }

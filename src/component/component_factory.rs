@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::ops::IndexMut;
 
-use super::{ComponentBank, PackedBank, ComponentStorage};
+use super::{ComponentBank, PackedBank, ComponentStorage, FreeIndices};
 use crate::entity::Entity;
 use crate::{Component, ErrEcs};
+use crate::data::*;
 
 pub struct ComponentFactory {
     //entity.id->lookup table for that entity.
@@ -35,77 +36,146 @@ impl ComponentFactory {
                     inits: HashSet::new(),
                     updates: HashSet::new(),
                     destroys: HashSet::new(),
+                },
+                free: FreeIndices {
+                    pos_next: 0,
+                    rot_next: 0,
+                    init_next: 0,
+                    update_next: 0,
+                    destroy_next: 0,
+                    positions: VecDeque::new(),
+                    rotations: VecDeque::new(),
+                    inits: VecDeque::new(),
+                    updates: VecDeque::new(),
+                    destroys: VecDeque::new(),
                 }
             },
         }
     }
 
-    //fn insert_position(&mut self, en: &mut Entity, data: Option<Vec3>) {}
-
-    fn bank_set<T>(index: usize, data: T, bank_vec: &mut Vec<T>) {
-        bank_vec.insert(index, data);
-    }
-
-    fn pack_set(packed_bank: &mut HashSet<u32>, index: usize) {
-        packed_bank.insert(index);
-    }
-
-    fn alloc_if_needed<T>(desired_index: usize, bank_vec: &mut Vec<T>) {
-        if desired_index > bank_vec.capacity() {
-            bank_vec.reserve(1);
+    //inserts a component and returns the index it inserted at.
+    fn insert<T>(
+        data: T,
+        into: &mut Vec<T>,
+        packed: &mut HashSet<usize>,
+        free_indices: &mut VecDeque<usize>,
+        next: &mut usize
+    ) -> usize
+    {
+        if let Some(i) = free_indices.pop_front() {
+            into[i] = data;
+            packed.insert(i);
+            i
+        } else {
+            if *next >= into.len() {
+                into.reserve(*next - into.len() + 1);
+            }
+            into.insert(*next, data);
+            packed.insert(*next);
+            *next += 1;
+            *next
         }
-    }
-
-    fn insert<T>(index: usize, data: T, bank_vec: &mut Vec<T>, packed_bank: &mut HashSet<usize>) {
-        ComponentFactory::alloc_if_needed::<T>(index, bank_vec);
-        ComponentFactory::bank_set::<T>(index, data, bank_vec);
-        ComponentFactory::pack_set(packed_bank, index);
     }
 
     //lookup in lookup table. if present, don't insert. if not present, make entry and insert.
-    fn lookup_insert<T>(&mut self,
+    fn lookup_insert<T>(
         en: &Entity,
-        index: usize,
         mask: u32,
         data: T,
-        bank_vec: &mut Vec<T>,
-        packed_bank: &mut HashSet<usize>) -> Result<(), ErrEcs>{
-        if let Some(entity_components_lookup) = component_lookup.get(en.id) { //has components already.
-            //EXTRACT BELOW INTO FUNCTION
-            if let Some(_) = entity_components_lookup.get(mask) { //uh oh, do nothing because it already has this component. return an error.
-                Err(ErrEcs::ComponentFactoryEntityAlreadyHasComponent(format!("entity: {:#?} component: {:#?}", en, data)))
-            } else { //okay give it a new component index located at the end.
-                ComponentFactory::insert::<T>(index, data, bank_vec, packed_bank);
-                entity_components_lookup.insert(mask, index);
+        component_lookup: &mut HashMap<u64, HashMap<u32, usize>>,
+        into: &mut Vec<T>,
+        packed: &mut HashSet<usize>,
+        free_indices: &mut VecDeque<usize>,
+        next: &mut usize
+    ) -> Result<(), ErrEcs>
+    {
+        if let Some(entity_components_lookup) = component_lookup.get_mut(&en.id) {
+            if let Some(_) = entity_components_lookup.get(&mask) {
+                Err(ErrEcs::ComponentFactoryEntityAlreadyHasComponent(format!("entity.id: {} component_mask: {}", en.id, mask)))
+            } else {
+                let i = ComponentFactory::insert::<T>(data, into, packed, free_indices, next);
+                entity_components_lookup.insert(mask, i);
+                Ok(())
             }
-        } else { //New entity which does not have any components yet. So we insert some new ones.
-            //USE EXTRACTED FUNCTION HERE?
+        } else {
+            component_lookup.insert(en.id, HashMap::new());
+            let i = ComponentFactory::insert::<T>(data, into, packed, free_indices, next);
+            component_lookup.get_mut(&en.id).unwrap().insert(mask, i);
+            Ok(())
         }
     }
 
-    pub fn insert_component(&mut self, en: &mut Entity, cmp: Component) -> Result<(), ErrEcs>{
-        panic!("Unimplemented.");
-        //check to see if allocation required.
-        //insert into bank
-        //insert into packed bank
-        //make lookup entry
-        //update bitmask
-
+    pub fn insert_component(&mut self, en: &mut Entity, cmp: Component) -> Result<(), ErrEcs> {
         match cmp {
             Component::Position(op) => {
-                //ComponentFactory::insert::<Option<Vec3>>()
+                ComponentFactory::lookup_insert::<Option<Vec3>>(
+                    en,
+                    ComponentFactory::POSITION_MASK,
+                    op,
+                    &mut self.component_lookup,
+                    &mut self.component_storage.bank.positions,
+                    &mut self.component_storage.packed.positions,
+                    &mut self.component_storage.free.positions,
+                    &mut self.component_storage.free.pos_next
+                )?;
+                en.component_mask |= ComponentFactory::POSITION_MASK;
+                Ok(())
             },
             Component::Rotation(op) => {
-
+                ComponentFactory::lookup_insert::<Option<Vec3>>(
+                    en,
+                    ComponentFactory::ROTATION_MASK,
+                    op,
+                    &mut self.component_lookup,
+                    &mut self.component_storage.bank.rotations,
+                    &mut self.component_storage.packed.rotations,
+                    &mut self.component_storage.free.rotations,
+                    &mut self.component_storage.free.rot_next
+                )?;
+                en.component_mask |= ComponentFactory::ROTATION_MASK;
+                Ok(())
             },
             Component::Init(op) => {
-
+                ComponentFactory::lookup_insert::<Option<Init>>(
+                    en,
+                    ComponentFactory::INIT_MASK,
+                    op,
+                    &mut self.component_lookup,
+                    &mut self.component_storage.bank.inits,
+                    &mut self.component_storage.packed.inits,
+                    &mut self.component_storage.free.inits,
+                    &mut self.component_storage.free.init_next
+                )?;
+                en.component_mask |= ComponentFactory::INIT_MASK;
+                Ok(())
             },
             Component::Update(op) => {
-
+                ComponentFactory::lookup_insert::<Option<Update>>(
+                    en,
+                    ComponentFactory::UPDATE_MASK,
+                    op,
+                    &mut self.component_lookup,
+                    &mut self.component_storage.bank.updates,
+                    &mut &mut self.component_storage.packed.updates,
+                    &mut self.component_storage.free.updates,
+                    &mut self.component_storage.free.update_next
+                )?;
+                en.component_mask |= ComponentFactory::UPDATE_MASK;
+                Ok(())
             },
             Component::Destroy(op) => {
-
+                ComponentFactory::lookup_insert::<Option<Destroy>>(
+                    en,
+                    ComponentFactory::DESTROY_MASK,
+                    op,
+                    &mut self.component_lookup,
+                    &mut self.component_storage.bank.destroys,
+                    &mut self.component_storage.packed.destroys,
+                    &mut self.component_storage.free.destroys,
+                    &mut self.component_storage.free.destroy_next
+                )?;
+                en.component_mask |= ComponentFactory::DESTROY_MASK;
+                Ok(())
             },
         }
     }
