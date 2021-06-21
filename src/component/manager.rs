@@ -11,20 +11,6 @@ pub struct Components {
     free: HashMap<TypeId, (usize, VecDeque<usize>)>,
 }
 
-pub trait TComponentManager {
-    //Component get
-    fn cget<T: Any>(&self, i: usize) -> &T;
-
-    //Component set
-    fn cset<T: Any>(&mut self, i: usize, comp: T);
-
-    //Component insert -- returns index it was inserted into.
-    fn cinsert<T: Any>(&mut self, comp: T) -> usize;
-
-    //Component remove
-    fn cremove<T: Any>(&mut self, i: usize);
-}
-
 pub struct CManager {
     components: Components,
 }
@@ -39,6 +25,50 @@ impl CManager {
             }
         }
     }
+
+    pub fn cget<T: Any>(&self, i: usize) -> &T {
+        if let Some(vec) = self.components.storage.get(&TypeId::of::<T>()) {
+            &*vec[i].downcast_ref::<T>().unwrap()
+        } else {
+            panic!("Error handling unimplemented.");
+        }
+    }
+
+    pub fn cset<T: Any>(&mut self, i: usize, comp: T) {
+        if let Some(vec) = self.components.storage.get_mut(&TypeId::of::<T>()) {
+            vec[i] = Box::new(comp);
+        } else {
+            panic!("Error handling unimplemented.");
+        }
+    }
+
+    pub fn cinsert<T: Any>(&mut self, comp: T) -> usize {
+        let i = self.find_available_index::<T>();
+        loop {
+            if let Some(vec) = self.components.storage.get_mut(&TypeId::of::<T>()) {
+                if i >= vec.capacity() {
+                    vec.reserve((i - vec.capacity()) + 1);
+                }
+                vec.insert(i, Box::new(comp));
+                break;
+            } else {
+                self.components.storage.insert(TypeId::of::<T>(), vec![]);
+            }
+        }
+        self.pack::<T>(i);
+        i
+    }
+
+    pub fn cremove<T: Any>(&mut self, i: usize) {
+        self.unpack::<T>(i);
+        self.free_index::<T>(i);
+        if let Some(vec) = self.components.storage.get_mut(&TypeId::of::<T>()) {
+            vec[i] = Box::new(-1);
+        } else {
+            panic!("Error handling unimplemented.");
+        }
+    }
+
     //Packs a new index for a component in the packed array.
     fn pack<T: Any>(&mut self, i: usize) {
         loop {
@@ -60,7 +90,14 @@ impl CManager {
 
     //Frees an index for use later.
     fn free_index<T: Any>(&mut self, i: usize) {
-
+        loop {
+            if let Some(nextAndVecdq) = self.components.free.get_mut(&TypeId::of::<T>()) {
+                nextAndVecdq.1.push_back(i);
+                break;
+            } else {
+                self.components.free.insert(TypeId::of::<T>(), (0, VecDeque::new()));
+            }
+        }
     }
 
     //Returns an available index for insertion.
@@ -77,50 +114,5 @@ impl CManager {
             panic!("Error handling unimplemented.");
         }
         i
-    }
-}
-
-impl TComponentManager for CManager {
-    fn cget<T: Any>(&self, i: usize) -> &T {
-        if let Some(vec) = self.components.storage.get(&TypeId::of::<T>()) {
-            &*vec[i].downcast_ref::<T>().unwrap()
-        } else {
-            panic!("Error handling unimplemented.");
-        }
-    }
-
-    fn cset<T: Any>(&mut self, i: usize, comp: T) {
-        if let Some(vec) = self.components.storage.get_mut(&TypeId::of::<T>()) {
-            vec[i] = Box::new(comp);
-        } else {
-            panic!("Error handling unimplemented.");
-        }
-    }
-
-    fn cinsert<T: Any>(&mut self, comp: T) -> usize {
-        let i = self.find_available_index::<T>();
-        loop {
-            if let Some(vec) = self.components.storage.get_mut(&TypeId::of::<T>()) {
-                if i >= vec.capacity() {
-                    vec.reserve((i - vec.capacity()) + 1);
-                }
-                vec.insert(i, Box::new(comp));
-                break;
-            } else {
-                self.components.storage.insert(TypeId::of::<T>(), vec![]);
-            }
-        }
-        self.pack::<T>(i);
-        i
-    }
-
-    fn cremove<T: Any>(&mut self, i: usize) {
-        self.unpack::<T>(i);
-        self.free_index::<T>(i);
-        if let Some(vec) = self.components.storage.get_mut(&TypeId::of::<T>()) {
-            vec[i] = Box::new(-1);
-        } else {
-            panic!("Error handling unimplemented.");
-        }
     }
 }

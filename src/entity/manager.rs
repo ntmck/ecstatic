@@ -2,19 +2,25 @@ use std::collections::{HashSet, HashMap, hash_map::DefaultHasher};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::hash::{Hash, Hasher};
 
-use super::Entity;
 use crate::ErrEcs;
 
-pub struct EntityFactory {
+pub struct Entity {
+    //identification token.
+    pub id: u64,
+    //authentication token. proves that a user actually owns the entity and its components.
+    pub auth: u64, //use in lib functions to authenticate.
+}
+
+pub struct EManager {
     //entity ids currently in use.
     active_entities: HashSet<u64>,
     //auth_token -> entity id. proves ownership of the entity if the user supplies the token and the entity id.
     auth_entity: HashMap<u64, u64>,
 }
 
-impl EntityFactory {
-    pub fn new() -> EntityFactory {
-        EntityFactory {
+impl EManager {
+    pub fn new() -> EManager {
+        EManager {
             active_entities: HashSet::new(),
             auth_entity: HashMap::new(),
         }
@@ -33,20 +39,20 @@ impl EntityFactory {
                 if let Some(_) = self.auth_entity.remove(&entity.auth) {
                     return Ok(())
                 } else {
-                    return Err(ErrEcs::EntityFactoryOwnerAuthNotFound(format!("entity_id: {}", &entity.id)))
+                    return Err(ErrEcs::EManagerOwnerAuthNotFound(format!("entity_id: {}", &entity.id)))
                 }
             } else {
-                Err(ErrEcs::EntityFactoryWrongIdForToken(format!("entity.id: {}", &entity.id)))
+                Err(ErrEcs::EManagerWrongIdForToken(format!("entity.id: {}", &entity.id)))
             }
         } else {
-            Err(ErrEcs::EntityFactoryOwnerAuthNotFound(format!("entity.id: {}", &entity.id)))
+            Err(ErrEcs::EManagerOwnerAuthNotFound(format!("entity.id: {}", &entity.id)))
         }
     }
 
     //Makes an entity id available for reuse.
     fn free_id(&mut self, entity: &Entity) -> Result<(), ErrEcs> {
         if !self.active_entities.remove(&entity.id) {
-            return Err(ErrEcs::EntityFactoryActiveEntityNotFound(format!("entity: {}", &entity.id)))
+            return Err(ErrEcs::EManagerActiveEntityNotFound(format!("entity: {}", &entity.id)))
         }
         Ok(())
     }
@@ -68,7 +74,6 @@ impl EntityFactory {
         Entity {
             id: id,
             auth: auth,
-            component_mask: 0,
         }
     }
 }

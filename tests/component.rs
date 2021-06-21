@@ -4,10 +4,9 @@ use ecstatic::*;
 
 #[test]
 pub fn test_insert_component() {
-    let mut ecs = Ecs::new();
-    let mut entity = ecs.create_entity();
-    match ecs.ecact(Action::Insert, &mut entity, position![]) {
-        Ok(_) => (),
-        Err(e) => assert!(false, "{:#?}", e)
-    }
+    let mut level = Ecs::new_level();
+    let entity = level.espawn();
+    level.ecgive::<Position2d>(&entity, Position2d{x:0.0, y:0.1});
+    let pos = level.ecget::<Position2d>(&entity);
+    assert!(0.0 == pos.x && 0.1 == pos.y);
 }
