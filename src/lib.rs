@@ -27,16 +27,6 @@ use entity::*;
 use component::*;
 pub use data::*;
 
-//use system::*;
-
-#[derive(Debug)]
-pub enum Action {
-    Insert,
-    Update,
-    Remove,
-    Free,
-}
-
 #[derive(Debug)]
 pub enum Component {
     Position(Option<Vec3>),
@@ -46,7 +36,6 @@ pub enum Component {
     Destroy(Option<Destroy>),
 }
 
-//Refactor to allow rotation/position to share the same underlying macro?
 #[macro_export]
 macro_rules! position {
     () => {
@@ -73,13 +62,14 @@ macro_rules! position {
 
 pub struct Ecs {
     entity_factory: EntityFactory,
-
+    cmanager: CManager,
 }
 
 impl Ecs {
     pub fn new() -> Ecs {
         Ecs {
             entity_factory: EntityFactory::new(),
+            cmanager: CManager::new(),
         }
     }
 
@@ -95,26 +85,8 @@ impl Ecs {
         self.entity_factory.free(entity)
     }
 
-    //Entity-Component Action
-    pub fn ecact(&mut self, act: Action, entity: &mut Entity, cmp: Component) -> Result<(), ErrEcs> {
-        match act {
-            Action::Insert => {
-
-                Ok(())
-            },
-            Action::Update => Ok(()),
-            Action::Remove => Ok(()),
-            Action::Free => Ok(()),
-        }
-    }
-
-    //Entity-System Action
-    pub fn esact(&mut self) {
-
-    }
-
-    //Component-System Action
-    pub fn csact(&mut self) {
+    //entity-component insert
+    pub fn ecinsert(&mut self, entity: Entity, component: Component) {
 
     }
 }

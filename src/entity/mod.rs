@@ -6,6 +6,4 @@ pub struct Entity {
     pub id: u64,
     //authentication token. proves that a user actually owns the entity and its components.
     pub auth: u64, //use in lib functions to authenticate.
-    //which components the entity has.
-    pub component_mask: u32,
 }
