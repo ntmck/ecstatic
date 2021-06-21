@@ -73,14 +73,13 @@ macro_rules! position {
 
 pub struct Ecs {
     entity_factory: EntityFactory,
-    component_factory: ComponentFactory,
+
 }
 
 impl Ecs {
     pub fn new() -> Ecs {
         Ecs {
             entity_factory: EntityFactory::new(),
-            component_factory: ComponentFactory::new(),
         }
     }
 
@@ -100,7 +99,7 @@ impl Ecs {
     pub fn ecact(&mut self, act: Action, entity: &mut Entity, cmp: Component) -> Result<(), ErrEcs> {
         match act {
             Action::Insert => {
-                self.component_factory.insert_component(entity, cmp);
+
                 Ok(())
             },
             Action::Update => Ok(()),
@@ -121,7 +120,7 @@ impl Ecs {
 }
 #[derive(Debug)]
 pub enum ErrEcs {
-    ComponentFactoryEntityAlreadyHasComponent(String),
+
 
     EntityFactoryOwnerAuthNotFound(String),
     EntityFactoryActiveEntityNotFound(String),
