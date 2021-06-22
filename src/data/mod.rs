@@ -1,8 +1,22 @@
-/*
-    Re-export all new data types.
-*/
-pub mod vec3;
-pub use vec3::Vec3;
+pub struct Position2d {
+    pub x: f64,
+    pub y: f64,
+}
+pub struct Rotation2d {
+    pub x: f64,
+    pub y: f64,
+}
+pub struct Position3d {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+pub struct Rotation3d {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
 pub type Init = fn();
 pub type Update = fn(u64); //delta time parameter.
 pub type Destroy = fn();
