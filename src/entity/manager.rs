@@ -39,13 +39,13 @@ impl EManager {
                 if let Some(_) = self.auth_entity.remove(&entity.auth) {
                     return Ok(())
                 } else {
-                    return Err(ErrEcs::EManagerOwnerAuthNotFound(format!("entity_id: {}", &entity.id)))
+                    return Err(ErrEcs::EManagerOwnerAuthNotFound(format!("entity: {}", &entity.id)))
                 }
             } else {
-                Err(ErrEcs::EManagerWrongIdForToken(format!("entity.id: {}", &entity.id)))
+                Err(ErrEcs::EManagerWrongIdForToken(format!("entity: {}", &entity.id)))
             }
         } else {
-            Err(ErrEcs::EManagerOwnerAuthNotFound(format!("entity.id: {}", &entity.id)))
+            Err(ErrEcs::EManagerOwnerAuthNotFound(format!("entity: {}", &entity.id)))
         }
     }
 

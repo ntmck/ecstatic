@@ -1,6 +1,8 @@
 use std::vec::Vec;
 use std::any::{Any, TypeId};
+use std::any::type_name;
 use std::collections::{HashSet, HashMap, VecDeque};
+use crate::ErrEcs;
 
 pub struct Components {
     //component_mask(type of component)->components
@@ -26,20 +28,19 @@ impl CManager {
         }
     }
 
-    pub fn cget<T: Any>(&self, i: usize) -> &T {
+    pub fn cget<T: Any>(&self, i: usize) -> Result<&T, ErrEcs> {
         if let Some(vec) = self.components.storage.get(&TypeId::of::<T>()) {
-            &*vec[i].downcast_ref::<T>().unwrap()
-        } else {
-            panic!("Error handling unimplemented.");
-        }
+            if let Some(cmp) = vec[i].downcast_ref::<T>() {
+                Ok(cmp) //&* keep an eye on type of cmp...? should be Ok(&T)
+            } else { Err(ErrEcs::CManagerComponentNotFound(format!("cget type: {} index: {}", type_name::<T>(), i))) }
+        } else { Err(ErrEcs::CManagerComponentTypeNotFound(format!("cget type: {}", type_name::<T>()))) }
     }
 
-    pub fn cset<T: Any>(&mut self, i: usize, comp: T) {
+    pub fn cset<T: Any>(&mut self, i: usize, comp: T) -> Result<(), ErrEcs>{
         if let Some(vec) = self.components.storage.get_mut(&TypeId::of::<T>()) {
             vec[i] = Box::new(comp);
-        } else {
-            panic!("Error handling unimplemented.");
-        }
+            Ok(())
+        } else { Err(ErrEcs::CManagerComponentTypeNotFound(format!("cset type: {}", type_name::<T>()))) }
     }
 
     pub fn cinsert<T: Any>(&mut self, comp: T) -> usize {
@@ -59,14 +60,13 @@ impl CManager {
         i
     }
 
-    pub fn cremove<T: Any>(&mut self, i: usize) {
+    pub fn cremove<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
         self.unpack::<T>(i);
         self.free_index::<T>(i);
         if let Some(vec) = self.components.storage.get_mut(&TypeId::of::<T>()) {
             vec[i] = Box::new(-1);
-        } else {
-            panic!("Error handling unimplemented.");
-        }
+            Ok(())
+        } else { Err(ErrEcs::CManagerComponentTypeNotFound(format!("cremove type: {}", type_name::<T>()))) }
     }
 
     //Packs a new index for a component in the packed array.
@@ -82,13 +82,16 @@ impl CManager {
     }
 
     //Unpacks index from packed array for component.
-    fn unpack<T: Any>(&mut self, i: usize) {
+    fn unpack<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
         if !self.components.packed.get_mut(&TypeId::of::<T>()).unwrap().remove(&i) {
-            panic!("Error handling not implemented. Attempt to unpack non-existent element from packed.");
+            return Err(ErrEcs::CManagerUnpackIndexNotFound(
+                format!("unpack attempt to unpack non-existent element from packed. index: {}", i)
+            ))
         }
+        Ok(())
     }
 
-    //Frees an index for use later.
+    //Inserts a freed an index for use later.
     fn free_index<T: Any>(&mut self, i: usize) {
         loop {
             if let Some(nextAndVecdq) = self.components.free.get_mut(&TypeId::of::<T>()) {
@@ -103,15 +106,18 @@ impl CManager {
     //Returns an available index for insertion.
     fn find_available_index<T: Any>(&mut self) -> usize {
         let i;
-        if let Some(nextAndVecdq) = self.components.free.get_mut(&TypeId::of::<T>()) {
-            if let Some(dq) = nextAndVecdq.1.pop_front() {
-                i = dq;
+        loop {
+            if let Some(nextAndVecdq) = self.components.free.get_mut(&TypeId::of::<T>()) {
+                if let Some(dq) = nextAndVecdq.1.pop_front() {
+                    i = dq;
+                } else {
+                    i = nextAndVecdq.0;
+                    nextAndVecdq.0 += 1;
+                }
+                break;
             } else {
-                i = nextAndVecdq.0;
-                nextAndVecdq.0 += 1;
+                self.components.free.insert(TypeId::of::<T>(), (0, VecDeque::new()));
             }
-        } else {
-            panic!("Error handling unimplemented.");
         }
         i
     }

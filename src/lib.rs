@@ -39,6 +39,12 @@ impl Ecs {
 
 #[derive(Debug)]
 pub enum ErrEcs {
+    CManagerComponentTypeNotFound(String),
+    CManagerComponentNotFound(String),
+    CManagerUnpackIndexNotFound(String),
+    CManagerComponentAlreadyExistsForEntity(String),
+    CManagerEntityNotFound(String),
+
     EManagerOwnerAuthNotFound(String),
     EManagerActiveEntityNotFound(String),
     EManagerWrongIdForToken(String),
