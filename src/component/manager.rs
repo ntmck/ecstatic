@@ -61,7 +61,7 @@ impl CManager {
     }
 
     pub fn cremove<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
-        self.unpack::<T>(i);
+        self.unpack::<T>(i)?;
         self.free_index::<T>(i);
         if let Some(vec) = self.components.storage.get_mut(&TypeId::of::<T>()) {
             vec[i] = Box::new(-1);
@@ -94,8 +94,8 @@ impl CManager {
     //Inserts a freed an index for use later.
     fn free_index<T: Any>(&mut self, i: usize) {
         loop {
-            if let Some(nextAndVecdq) = self.components.free.get_mut(&TypeId::of::<T>()) {
-                nextAndVecdq.1.push_back(i);
+            if let Some(next_and_vecdq) = self.components.free.get_mut(&TypeId::of::<T>()) {
+                next_and_vecdq.1.push_back(i);
                 break;
             } else {
                 self.components.free.insert(TypeId::of::<T>(), (0, VecDeque::new()));
@@ -107,12 +107,12 @@ impl CManager {
     fn find_available_index<T: Any>(&mut self) -> usize {
         let i;
         loop {
-            if let Some(nextAndVecdq) = self.components.free.get_mut(&TypeId::of::<T>()) {
-                if let Some(dq) = nextAndVecdq.1.pop_front() {
+            if let Some(next_and_vecdq) = self.components.free.get_mut(&TypeId::of::<T>()) {
+                if let Some(dq) = next_and_vecdq.1.pop_front() {
                     i = dq;
                 } else {
-                    i = nextAndVecdq.0;
-                    nextAndVecdq.0 += 1;
+                    i = next_and_vecdq.0;
+                    next_and_vecdq.0 += 1;
                 }
                 break;
             } else {

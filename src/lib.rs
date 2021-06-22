@@ -24,8 +24,6 @@ mod system;
 mod data;
 mod level;
 
-use entity::*;
-use component::*;
 use level::*;
 pub use data::*;
 

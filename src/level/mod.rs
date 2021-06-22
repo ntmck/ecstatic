@@ -1,14 +1,9 @@
 use crate::component::*;
 use crate::entity::*;
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
 use std::any::{Any, TypeId};
 use std::any::type_name;
 use crate::ErrEcs;
-
-pub trait TLevel {
-
-    fn espawn(&mut self);
-}
 
 pub struct Level {
     //entity manager
@@ -41,7 +36,7 @@ impl Level {
             ))
         } else {
             let i = self.cmanager.cinsert::<T>(component);
-            self.set_cindex::<T>(entity, i);
+            self.set_cindex::<T>(i, entity);
             Ok(())
         }
     }
@@ -50,6 +45,30 @@ impl Level {
     pub fn ecget<T: Any>(&mut self, entity: &Entity) -> Result<&T, ErrEcs> {
         let i = self.get_cindex::<T>(entity)?;
         self.cmanager.cget::<T>(i)
+    }
+
+    pub fn ecset<T: Any>(&mut self, entity: &Entity, component: T) -> Result<(), ErrEcs> {
+        let i = self.get_cindex::<T>(entity)?;
+        self.cmanager.cset::<T>(i, component)
+    }
+
+    //Entity-Component: removes component from given entity.
+    pub fn ecremove<T: Any>(&mut self, entity: &Entity) -> Result<(), ErrEcs> {
+        let i = self.get_cindex::<T>(entity)?;
+        self.cmanager.cremove::<T>(i)
+    }
+
+    pub fn ecfree(&mut self, entity: Entity) -> Result<(), ErrEcs> {
+        self.emanager.deactivate_entity(&entity)?;
+        //TODO:
+        //get all component ids for entity and cremove all of them.
+        //clean up hashmap entries for this entity.
+        panic!("Unimplemented.")
+        Ok(())
+    }
+
+    pub fn is_entity_active(&self, entity: &Entity) -> bool {
+        self.emanager.is_entity_active(entity)
     }
 
     //get the component index if it is owned by the entity.
@@ -62,7 +81,7 @@ impl Level {
     }
 
     //make a component index owned by an entity.
-    fn set_cindex<T: Any>(&mut self, entity: &Entity, i: usize) {
+    fn set_cindex<T: Any>(&mut self, i: usize, entity: &Entity) {
         loop {
             if let Some(cmap) = self.cownership.get_mut(&entity.id) {
                 if let Some(i) = cmap.insert(TypeId::of::<T>(), i) {
