@@ -1,5 +1,5 @@
 # ECStatic Game Engine
-ECStatic is a game engine design for small games.
+ECStatic is a game engine designed for small games.
 
 ECStatic will not support any front-end or rendering, but is strictly an entity-component system that handles the back-end of small games.
 
