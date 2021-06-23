@@ -61,9 +61,13 @@ impl CManager {
     }
 
     pub fn cremove<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
-        self.unpack::<T>(i)?;
-        self.free_index::<T>(i);
-        if let Some(vec) = self.components.storage.get_mut(&TypeId::of::<T>()) {
+        self.cremove_by_id(TypeId::of::<T>(), i)
+    }
+
+    pub fn cremove_by_id(&mut self, key: TypeId, i: usize) -> Result<(), ErrEcs> {
+        self.unpack_by_id(key, i)?;
+        self.free_index_by_id(key, i);
+        if let Some(vec) = self.components.storage.get_mut(&key) {
             vec[i] = Box::new(-1);
             Ok(())
         } else { Err(ErrEcs::CManagerComponentTypeNotFound(format!("cremove type: {}", type_name::<T>()))) }
@@ -83,7 +87,11 @@ impl CManager {
 
     //Unpacks index from packed array for component.
     fn unpack<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
-        if !self.components.packed.get_mut(&TypeId::of::<T>()).unwrap().remove(&i) {
+        self.unpack_by_id(TypeId::of::<T>(), i)
+    }
+
+    fn unpack_by_id(&mut self, key: TypeId, i: usize) -> Result<(), ErrEcs> {
+        if !self.components.packed.get_mut(&key).unwrap().remove(&i) {
             return Err(ErrEcs::CManagerUnpackIndexNotFound(
                 format!("unpack attempt to unpack non-existent element from packed. index: {}", i)
             ))
@@ -93,6 +101,10 @@ impl CManager {
 
     //Inserts a freed an index for use later.
     fn free_index<T: Any>(&mut self, i: usize) {
+        self.free_index_by_id(TypeId::of::<T>(), i);
+    }
+
+    fn free_index_by_id(&mut self, key: TypeId, i: usize) {
         loop {
             if let Some(next_and_vecdq) = self.components.free.get_mut(&TypeId::of::<T>()) {
                 next_and_vecdq.1.push_back(i);
