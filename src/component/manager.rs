@@ -60,8 +60,6 @@ impl CManager {
         i
     }
 
-    //Removes, but does NOT deallocate the given component type at index.
-    //Deallocation of components should happen by the memory manager to not invalidate entitiys' indices.
     pub fn cremove<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
         self.cremove_by_id(TypeId::of::<T>(), i)
     }
@@ -72,7 +70,7 @@ impl CManager {
         if let Some(vec) = self.components.storage.get_mut(&key) {
             vec[i] = Box::new(-1);
             Ok(())
-        } else { Err(ErrEcs::CManagerComponentTypeNotFound(format!("cremove type_id: {:#?}", key))) }
+        } else { Err(ErrEcs::CManagerComponentTypeNotFound(format!("cremove type: {}", type_name::<T>()))) }
     }
 
     //Packs a new index for a component in the packed array.
@@ -108,11 +106,11 @@ impl CManager {
 
     fn free_index_by_id(&mut self, key: TypeId, i: usize) {
         loop {
-            if let Some(next_and_vecdq) = self.components.free.get_mut(&key) {
+            if let Some(next_and_vecdq) = self.components.free.get_mut(&TypeId::of::<T>()) {
                 next_and_vecdq.1.push_back(i);
                 break;
             } else {
-                self.components.free.insert(key, (0, VecDeque::new()));
+                self.components.free.insert(TypeId::of::<T>(), (0, VecDeque::new()));
             }
         }
     }

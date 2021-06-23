@@ -90,6 +90,7 @@ pub fn test_remove_on_none() {
 pub fn test_components_removed() {
     let mut level = Ecs::new_level();
     let entity = level.espawn();
+
     let eclone = entity.clone();
     level.ecgive::<Position2d>(&entity, Position2d{x:0.0, y:0.1});
     level.ecgive::<Position3d>(&entity, Position3d{x:0.2, y:0.3, z: 0.4});
