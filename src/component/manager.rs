@@ -31,7 +31,7 @@ impl CManager {
     pub fn cget<T: Any>(&self, i: usize) -> Result<&T, ErrEcs> {
         if let Some(vec) = self.components.storage.get(&TypeId::of::<T>()) {
             if let Some(cmp) = vec[i].downcast_ref::<T>() {
-                Ok(cmp) //&* keep an eye on type of cmp...? should be Ok(&T)
+                Ok(cmp)
             } else { Err(ErrEcs::CManagerComponentNotFound(format!("cget type: {} index: {}", type_name::<T>(), i))) }
         } else { Err(ErrEcs::CManagerComponentTypeNotFound(format!("cget type: {}", type_name::<T>()))) }
     }
@@ -68,7 +68,7 @@ impl CManager {
         self.unpack_by_id(key, i)?;
         self.free_index_by_id(key, i);
         if let Some(vec) = self.components.storage.get_mut(&key) {
-            vec[i] = Box::new(-1);
+            vec[i] = Box::new(0u8);
             Ok(())
         } else { Err(ErrEcs::CManagerComponentTypeNotFound(format!("cremove type_id: {:#?}", key))) }
     }
