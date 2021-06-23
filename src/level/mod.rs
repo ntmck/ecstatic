@@ -58,12 +58,15 @@ impl Level {
         self.cmanager.cremove::<T>(i)
     }
 
+    //Entity-Component: marks an entity's components as free for the memory manager and invalidates the entity.
     pub fn ecfree(&mut self, entity: Entity) -> Result<(), ErrEcs> {
         self.emanager.deactivate_entity(&entity)?;
-        //TODO:
-        //get all component ids for entity and cremove all of them.
-        //clean up hashmap entries for this entity.
-        panic!("Unimplemented.")
+        if let Some(cmap) = self.cownership.get_mut(&entity.id) {
+            for (k, v) in cmap.iter_mut() {
+                self.cmanager.cremove_byid(*k, *v)?;
+            }
+        }
+        self.cownership.remove(&entity.id);
         Ok(())
     }
 
