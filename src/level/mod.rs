@@ -55,6 +55,7 @@ impl Level {
     //Entity-Component: removes component from given entity.
     pub fn ecremove<T: Any>(&mut self, entity: &Entity) -> Result<(), ErrEcs> {
         let i = self.get_cindex::<T>(entity)?;
+        self.remove_cindex::<T>(entity)?;
         self.cmanager.cremove::<T>(i)
     }
 
