@@ -103,3 +103,47 @@ pub fn test_components_removed() {
         }
     }
 }
+
+#[test]
+pub fn test_replace_component() {
+    let mut level = Ecs::new_level();
+    let entity = level.espawn();
+
+    level.ecgive::<Position2d>(&entity, Position2d{x:0.0, y:0.1});
+    level.ecremove::<Position2d>(&entity);
+    level.ecgive::<Position2d>(&entity, Position2d{x:0.1, y:0.2});
+    let pos = level.ecget::<Position2d>(&entity).unwrap();
+    assert!(pos.x == 0.1 && pos.y == 0.2);
+}
+
+#[test]
+pub fn test_insert_set_remove_insert_set() {
+    let mut level = Ecs::new_level();
+    let entity = level.espawn();
+
+    level.ecgive::<Position2d>(&entity, Position2d{x:0.0, y:0.1});
+    level.ecset::<Position2d>(&entity, Position2d{x:0.2, y:0.2});
+    level.ecremove::<Position2d>(&entity);
+    level.ecgive::<Position2d>(&entity, Position2d{x:1.0, y:2.1});
+    let pos = level.ecget::<Position2d>(&entity).unwrap();
+    assert!(pos.x == 1.0 && pos.y == 2.1);
+}
+
+fn my_func() -> u32{
+    9001u32
+}
+
+#[test]
+pub fn test_insert_and_get_fn_pointer() {
+    let mut level = Ecs::new_level();
+    let entity = level.espawn();
+
+    type MyFunc = fn() -> u32;
+    let f: MyFunc = my_func;
+
+    level.ecgive::<MyFunc>(&entity, f);
+
+    let ec_func = level.ecget::<MyFunc>(&entity).unwrap();
+    let x = ec_func();
+    assert!(x == 9001u32);
+}

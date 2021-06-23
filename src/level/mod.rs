@@ -55,6 +55,7 @@ impl Level {
     //Entity-Component: removes component from given entity.
     pub fn ecremove<T: Any>(&mut self, entity: &Entity) -> Result<(), ErrEcs> {
         let i = self.get_cindex::<T>(entity)?;
+        self.remove_cindex::<T>(entity)?;
         self.cmanager.cremove::<T>(i)
     }
 
@@ -63,7 +64,7 @@ impl Level {
         self.emanager.deactivate_entity(&entity)?;
         if let Some(cmap) = self.cownership.get_mut(&entity.id) {
             for (k, v) in cmap.iter_mut() {
-                self.cmanager.cremove_byid(*k, *v)?;
+                self.cmanager.cremove_by_id(*k, *v)?;
             }
         }
         self.cownership.remove(&entity.id);
@@ -95,5 +96,13 @@ impl Level {
                 self.cownership.insert(entity.id, HashMap::new());
             }
         }
+    }
+
+    //remove an entity's ownership of a component.
+    fn remove_cindex<T: Any>(&mut self, entity: &Entity) -> Result<(), ErrEcs> {
+        if let Some(cmap) = self.cownership.get_mut(&entity.id) {
+            cmap.remove(&TypeId::of::<T>());
+            Ok(())
+        } else { Err(ErrEcs::CManagerEntityNotFound(format!("remove_cindex entity not found in cownership. entity: {}", entity.id))) }
     }
 }
