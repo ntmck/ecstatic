@@ -18,11 +18,11 @@ For more details see: <http://www.gnu.org/licenses/>.
 
 */
 
-mod entity;
-mod component;
-mod system;
-mod data;
-mod level;
+pub mod entity;
+pub mod component;
+pub mod system;
+pub mod data;
+pub mod level;
 
 use level::*;
 pub use data::*;
@@ -37,11 +37,14 @@ impl Ecs {
 
 #[derive(Debug)]
 pub enum ErrEcs {
-    CManagerComponentTypeNotFound(String),
-    CManagerComponentNotFound(String),
-    CManagerUnpackIndexNotFound(String),
+    StorageComponentTypeNotFound(String),
+    StorageComponentNotFound(String),
+
+    CManagerUnpackIndexOutOfBounds(String),
     CManagerComponentAlreadyExistsForEntity(String),
-    CManagerEntityNotFound(String),
+
+    COwnershipEntityNotFound(String),
+    COwnershipComponentNotFound(String),
 
     EManagerOwnerAuthNotFound(String),
     EManagerActiveEntityNotFound(String),

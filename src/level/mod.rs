@@ -11,7 +11,7 @@ pub struct Level {
     //component manager
     cmanager: CManager,
     //component ownership: entity_id->component_type->index
-    cownership: HashMap<u64, HashMap<TypeId, usize>>
+    cownership: COwnership,
 }
 
 impl Level {
@@ -19,7 +19,7 @@ impl Level {
         Level {
             emanager: EManager::new(),
             cmanager: CManager::new(),
-            cownership: HashMap::new(),
+            cownership: COwnership::new(),
         }
     }
 
@@ -62,47 +62,46 @@ impl Level {
     //Entity-Component: marks an entity's components as free for the memory manager and invalidates the entity.
     pub fn ecfree(&mut self, entity: Entity) -> Result<(), ErrEcs> {
         self.emanager.deactivate_entity(&entity)?;
-        if let Some(cmap) = self.cownership.get_mut(&entity.id) {
-            for (k, v) in cmap.iter_mut() {
-                self.cmanager.cremove_by_id(*k, *v)?;
-            }
+        for (k, v) in self.cownership.get_entity_components_iter_mut(&entity) {
+            self.cmanager.cremove_by_id(k, *v)?;
         }
-        self.cownership.remove(&entity.id);
+        self.cownership.remove_entry(&entity)?;
         Ok(())
     }
 
-    pub fn is_entity_active(&self, entity: &Entity) -> bool {
-        self.emanager.is_entity_active(entity)
+    //Component: start compressing component memory using component/memory.rs
+    pub fn ccompress(&mut self) -> Result<(), ErrEcs> {
+        let mem = Memory::new();
+
+        Ok(())
+    }
+
+    //Component: returns the length of cmanager.storage.
+    pub fn clen<T: Any>(&self) -> usize {
+        self.cmanager.len::<T>()
+    }
+
+    //Component: returns the capacity of cmanager.storage.
+    pub fn ccapacity<T: Any>(&self) -> usize {
+        self.cmanager.capacity::<T>()
+    }
+
+    pub fn is_entity_active(&self, e: &Entity) -> bool {
+        self.emanager.is_entity_active(e)
     }
 
     //get the component index if it is owned by the entity.
-    fn get_cindex<T: Any>(&mut self, entity: &Entity) -> Result<usize, ErrEcs> {
-        if let Some(cmap) = self.cownership.get(&entity.id) {
-            if let Some(i) = cmap.get(&TypeId::of::<T>()) {
-                Ok(*i)
-            } else { Err(ErrEcs::CManagerComponentNotFound(format!("get_cindex entity does not have component {}", type_name::<T>()))) }
-        } else { Err(ErrEcs::CManagerEntityNotFound(format!("get_cindex entity not found in cownership. entity: {}", entity.id))) }
+    fn get_cindex<T: Any>(&mut self, e: &Entity) -> Result<usize, ErrEcs> {
+        self.cownership.get_cindex::<T>(e)
     }
 
     //make a component index owned by an entity.
-    fn set_cindex<T: Any>(&mut self, i: usize, entity: &Entity) {
-        loop {
-            if let Some(cmap) = self.cownership.get_mut(&entity.id) {
-                if let Some(i) = cmap.insert(TypeId::of::<T>(), i) {
-                    panic!("set_cindex replaced an owned index. ecgive should have covered this case. index: {}", i);
-                }
-                break;
-            } else {
-                self.cownership.insert(entity.id, HashMap::new());
-            }
-        }
+    fn set_cindex<T: Any>(&mut self, i: usize, e: &Entity) {
+        self.cownership.insert::<T>(i, e)
     }
 
     //remove an entity's ownership of a component.
-    fn remove_cindex<T: Any>(&mut self, entity: &Entity) -> Result<(), ErrEcs> {
-        if let Some(cmap) = self.cownership.get_mut(&entity.id) {
-            cmap.remove(&TypeId::of::<T>());
-            Ok(())
-        } else { Err(ErrEcs::CManagerEntityNotFound(format!("remove_cindex entity not found in cownership. entity: {}", entity.id))) }
+    fn remove_cindex<T: Any>(&mut self, e: &Entity) -> Result<(), ErrEcs> {
+        self.cownership.remove::<T>(e)
     }
 }

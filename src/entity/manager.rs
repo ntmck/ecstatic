@@ -4,7 +4,7 @@ use std::hash::{Hash, Hasher};
 
 use crate::ErrEcs;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Entity {
     pub id: u64,
 }
