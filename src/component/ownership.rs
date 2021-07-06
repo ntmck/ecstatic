@@ -21,6 +21,12 @@ impl COwnership {
         self.ownership.contains_key(&e.id)
     }
 
+    pub fn get_entity_ids(&self) -> Vec<u64> {
+        self.ownership.keys()
+        .map(|&x| x.clone())
+        .collect()
+    }
+
     pub fn get_entity_components_iter_mut(&mut self, e: &Entity) -> IterMut<TypeId, usize> {
         if let Some(cmap) = self.ownership.get_mut(&e.id) {
             cmap.iter_mut()

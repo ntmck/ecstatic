@@ -29,6 +29,7 @@ impl Memory {
         //update next_free to be len+1 of compressed vector.
 
     pub fn compress<T: Any>(&self, cmanager: &mut CManager, cownership: &mut COwnership) {
-
+        let eids = cownership.get_entity_ids();
+        for
     }
 }

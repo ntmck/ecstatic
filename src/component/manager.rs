@@ -55,9 +55,21 @@ impl CManager {
         i
     }
 
-    //swap elements i and j in component storage.
-    pub fn cswap<T: Any>(&mut self, i: usize, j: usize) {
-        self.components.storage.swap::<T>(i, j);
+    //This function is unsafe because it does NOT update
+    // an entity's owned component index which may result in index out of bounds or other errors
+    // such as an entity accessing another entity's component. Use with caution.
+    //swap element at i with a free index j. c[j] = c[i].
+    pub fn unsafe_swap_with_free<T: Any>(&mut self, i: usize) {
+        self.components.storage.swap::<T>(i, self.find_available_index::<T>());
+    }
+
+    //Resets the FreeEntry of a type to correctly reflect the capacity of the vector and empties the queue.
+    pub fn reset_free<T: Any>(&mut self) -> Result<(), ErrEcs> {
+        if let Some(entry) = self.components.free.get_mut(&TypeId::of::<T>()) {
+            entry.next_free = self.capacity::<T>();
+            entry.free_q.clear();
+            Ok(())
+        } else { Err(ErrEcs::CManagerTypeNotFound(format!("reset_free type_name: {}", type_name::<T>()))) }
     }
 
     //Returns capacity of storage for the given type.
@@ -70,21 +82,15 @@ impl CManager {
         self.components.storage.len::<T>()
     }
 
-//REFACTOR?
     pub fn cremove<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
         self.cremove_by_id(&TypeId::of::<T>(), i)
     }
     //frees an index for reuse and sets the memory of a type at index to 0.
     pub fn cremove_by_id(&mut self, type_id: &TypeId, i: usize) -> Result<(), ErrEcs> {
         self.free_index_by_id(type_id, i);
-        self.cremove_by_id_no_free_index(type_id, i)
-    }
-    //sets the memory of a type at index to 0.
-    pub fn cremove_by_id_no_free_index(&mut self, type_id: &TypeId, i: usize) -> Result<(), ErrEcs> {
         self.components.packer.unpack_by_id(type_id, i)?;
         self.components.storage.remove_by_id(type_id, i)
     }
-//REFACTOR?
 
     //Packs a new index for a component in the packed array.
     fn pack<T: Any>(&mut self, i: usize) {

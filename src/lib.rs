@@ -31,8 +31,8 @@ pub struct Ecs;
 
 impl Ecs {
     pub fn new_level() -> Level {
-        //Default compression ratio: 0.5
-        Level::new(0.5f64)
+        //Default compression ratio: 0.2 in which 80% of capacity is unused.
+        Level::new(0.2f64)
     }
 }
 
@@ -44,6 +44,7 @@ pub enum ErrEcs {
     PackerUnpackIndexOutOfBounds(String),
 
     CManagerComponentAlreadyExistsForEntity(String),
+    CManagerTypeNotFound(String),
 
     COwnershipEntityNotFound(String),
     COwnershipComponentNotFound(String),
@@ -51,4 +52,6 @@ pub enum ErrEcs {
     EManagerOwnerAuthNotFound(String),
     EManagerActiveEntityNotFound(String),
     EManagerWrongIdForToken(String),
+
+    LevelStorageCapacityLessThanOrEqualToZero(String),
 }

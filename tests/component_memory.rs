@@ -25,7 +25,6 @@ fn setup_layout_1() -> Level {
 }
 
 //Setup Memory Layout 2: [2i = None], [2i+1 = Some]
-//Should trigger a compression ratio of 0.5
 fn setup_layout_2() -> Level {
     let mut level = Ecs::new_level();
     let mut ev: Vec<Entity> = vec![];
@@ -46,7 +45,7 @@ fn setup_layout_2() -> Level {
 pub fn test_compress_memory_layout_1() {
     let mut level = setup_layout_1();
 
-    match level.ccompress() {
+    match level.compress_component_memory() {
         Ok(_) => (),
         Err(e) => assert!(false, "{:#?}", e)
     }
@@ -58,7 +57,7 @@ pub fn test_compress_memory_layout_1() {
 pub fn test_compress_memory_layout_2() {
     let mut level = setup_layout_2();
 
-    match level.ccompress() {
+    match level.compress_component_memory() {
         Ok(_) => (),
         Err(e) => assert!(false, "{:#?}", e)
     }

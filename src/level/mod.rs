@@ -40,7 +40,7 @@ impl Level {
         } else {
             let i = self.cmanager.cinsert::<T>(component);
             self.set_cindex::<T>(i, entity);
-            self.check_compress::<T>();
+            self.check_compress::<T>()?;
             Ok(())
         }
     }
@@ -54,7 +54,7 @@ impl Level {
     pub fn ecset<T: Any>(&mut self, entity: &Entity, component: T) -> Result<(), ErrEcs> {
         let i = self.get_cindex::<T>(entity)?;
         self.cmanager.cset::<T>(i, component)?;
-        self.check_compress::<T>();
+        self.check_compress::<T>()?;
         Ok(())
     }
 
@@ -63,7 +63,7 @@ impl Level {
         let i = self.get_cindex::<T>(entity)?;
         self.remove_cindex::<T>(entity)?;
         self.cmanager.cremove::<T>(i)?;
-        self.check_compress::<T>();
+        self.check_compress::<T>()?;
         Ok(())
     }
 
@@ -91,18 +91,20 @@ impl Level {
     }
 
     //check to see if memory needs to be compressed.
-    fn check_compress<T: Any>(&mut self) {
+    fn check_compress<T: Any>(&mut self) -> Result<(), ErrEcs> {
         if self.ccapacity::<T>() > 0 {
-            if (self.clen::<T>() / self.ccapacity::<T>()) as f64 >= self.compression_ratio {
-                self.compress::<T>();
+            if (self.clen::<T>() / self.ccapacity::<T>()) as f64 <= self.compression_ratio {
+                self.compress_component_memory::<T>();
             }
-        }
+            Ok(())
+        } else { Err(ErrEcs::LevelStorageCapacityLessThanOrEqualToZero(format!("Avoided divison by 0 or negative in check_compress."))) }
     }
 
     //compress memory of a type.
-    fn compress<T: Any>(&mut self) {
+    pub fn compress_component_memory<T: Any>(&mut self) -> Result<(), ErrEcs> {
         let mem = Memory::new();
         mem.compress::<T>(&mut self.cmanager, &mut self.cownership);
+        Ok(())
     }
 
     //get the component index if it is owned by the entity.
