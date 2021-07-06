@@ -31,7 +31,8 @@ pub struct Ecs;
 
 impl Ecs {
     pub fn new_level() -> Level {
-        Level::new()
+        //Default compression ratio: 0.5
+        Level::new(0.5f64)
     }
 }
 
@@ -40,7 +41,8 @@ pub enum ErrEcs {
     StorageComponentTypeNotFound(String),
     StorageComponentNotFound(String),
 
-    CManagerUnpackIndexOutOfBounds(String),
+    PackerUnpackIndexOutOfBounds(String),
+
     CManagerComponentAlreadyExistsForEntity(String),
 
     COwnershipEntityNotFound(String),

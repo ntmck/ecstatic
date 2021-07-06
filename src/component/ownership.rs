@@ -17,6 +17,10 @@ impl COwnership {
         }
     }
 
+    pub fn is_entity_active(&self, e: &Entity) -> bool {
+        self.ownership.contains_key(&e.id)
+    }
+
     pub fn get_entity_components_iter_mut(&mut self, e: &Entity) -> IterMut<TypeId, usize> {
         if let Some(cmap) = self.ownership.get_mut(&e.id) {
             cmap.iter_mut()

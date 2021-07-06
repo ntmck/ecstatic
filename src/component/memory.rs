@@ -1,4 +1,5 @@
 use std::any::{Any, TypeId};
+
 use crate::component::{CManager, COwnership};
 use crate::entity::Entity;
 
@@ -11,28 +12,23 @@ impl Memory {
         Memory {}
     }
 
-    /*pub fn compress(&self, cmanager: &mut CManager, cownership: &mut COwnership) {
-        //i need a way of knowing that a component index belongs to an entity at packed component level.
+    //for each component in storage
+        //let i = active component index
+        //let j = free component index
+        //let e = owner of component[i]
 
-        //maybe edit packed so that it is a Vec of struct(usize, entity.id)? (change packed to Vec!)
-            //Side note: probably change Free's tuple to a named struct for simplicity...
-        //that way we iterate through cmanager.packed, where i = packed index
-        //move storage[i] to cmanager.free.pop_front
-        //change current packed index to next free using popped free index,
-        //use entity.id@type to update cownership's index to popped free index.
-        //repeat until all moved to free space, then truncate all extra free space.
-        //update next_free to storage.len()? +1? and ensure that the freed VecDeque is empty.
+        //get active component index: i
+        //get entity: e of c[i] //This funcitonality is required at the moment...
+        //get free index: j
+        //swap c[i] and c[j] to move active index as far left in the vector as possible.
+        //set cownership[e[type]] = j to update entity's owned component index.
 
-        //foreach type we swap a packed index for a freed index and update the packed index to free.
+    //after loop:
+        //truncate all vector data after len+1
+        //ensure that free_q is empty.
+        //update next_free to be len+1 of compressed vector.
 
-        let mut type_ids: Vec<TypeId> = vec![];
-        for (type_id, _) in cmanager.components.storage.iter() {
-            type_ids.push(*type_id);
-        }
+    pub fn compress<T: Any>(&self, cmanager: &mut CManager, cownership: &mut COwnership) {
 
-        for type_id in type_ids.iter() {
-            let free_index = cmanager.find_available_free_index_by_id(type_id);
-            if let Some(packed_index) =
-        }
-    }*/
+    }
 }

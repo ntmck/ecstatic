@@ -25,6 +25,7 @@ fn setup_layout_1() -> Level {
 }
 
 //Setup Memory Layout 2: [2i = None], [2i+1 = Some]
+//Should trigger a compression ratio of 0.5
 fn setup_layout_2() -> Level {
     let mut level = Ecs::new_level();
     let mut ev: Vec<Entity> = vec![];

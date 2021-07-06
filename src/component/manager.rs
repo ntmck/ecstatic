@@ -34,7 +34,7 @@ impl CManager {
         CManager {
             components: Components {
                 storage: Storage::new(),
-                packed: Packer::new(),
+                packer: Packer::new(),
                 free: HashMap::new(),
             }
         }
@@ -53,6 +53,11 @@ impl CManager {
         self.components.storage.insert::<T>(i, comp);
         self.pack::<T>(i);
         i
+    }
+
+    //swap elements i and j in component storage.
+    pub fn cswap<T: Any>(&mut self, i: usize, j: usize) {
+        self.components.storage.swap::<T>(i, j);
     }
 
     //Returns capacity of storage for the given type.
@@ -76,36 +81,19 @@ impl CManager {
     }
     //sets the memory of a type at index to 0.
     pub fn cremove_by_id_no_free_index(&mut self, type_id: &TypeId, i: usize) -> Result<(), ErrEcs> {
-        self.unpack_by_id(type_id, i)?;
+        self.components.packer.unpack_by_id(type_id, i)?;
         self.components.storage.remove_by_id(type_id, i)
     }
 //REFACTOR?
 
     //Packs a new index for a component in the packed array.
     fn pack<T: Any>(&mut self, i: usize) {
-        loop {
-            if let Some(vec) = self.components.packed.get_mut(&TypeId::of::<T>()) {
-                vec.push(i);
-                break;
-            } else {
-                self.components.packed.insert(TypeId::of::<T>(), vec![]);
-            }
-        }
+        self.components.packer.pack::<T>(i);
     }
 
     //Unpacks index from packed array for component.
     fn unpack<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
-        self.unpack_by_id(&TypeId::of::<T>(), i)
-    }
-
-    fn unpack_by_id(&mut self, type_id: &TypeId, i: usize) -> Result<(), ErrEcs> {
-        if let Some(vec) = self.components.packed.get_mut(type_id) {
-            if i < vec.len() {
-                vec.remove(i);
-                return Ok(())
-            }
-        }
-        Err(ErrEcs::CManagerUnpackIndexOutOfBounds(format!("unpack attempt to unpack non-existent element from packed. index: {}", i)))
+        self.components.packer.unpack::<T>(i)
     }
 
     //Inserts a freed an index for use later.

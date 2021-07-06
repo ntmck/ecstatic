@@ -12,14 +12,17 @@ pub struct Level {
     cmanager: CManager,
     //component ownership: entity_id->component_type->index
     cownership: COwnership,
+    //ratio of len/capacity space to trigger memory compression on the storage of a component.
+    compression_ratio: f64,
 }
 
 impl Level {
-    pub fn new() -> Level {
+    pub fn new(compression_ratio: f64) -> Level {
         Level {
             emanager: EManager::new(),
             cmanager: CManager::new(),
             cownership: COwnership::new(),
+            compression_ratio: compression_ratio,
         }
     }
 
@@ -37,6 +40,7 @@ impl Level {
         } else {
             let i = self.cmanager.cinsert::<T>(component);
             self.set_cindex::<T>(i, entity);
+            self.check_compress::<T>();
             Ok(())
         }
     }
@@ -49,30 +53,26 @@ impl Level {
 
     pub fn ecset<T: Any>(&mut self, entity: &Entity, component: T) -> Result<(), ErrEcs> {
         let i = self.get_cindex::<T>(entity)?;
-        self.cmanager.cset::<T>(i, component)
+        self.cmanager.cset::<T>(i, component)?;
+        self.check_compress::<T>();
+        Ok(())
     }
 
     //Entity-Component: removes component from given entity.
     pub fn ecremove<T: Any>(&mut self, entity: &Entity) -> Result<(), ErrEcs> {
         let i = self.get_cindex::<T>(entity)?;
         self.remove_cindex::<T>(entity)?;
-        self.cmanager.cremove::<T>(i)
+        self.cmanager.cremove::<T>(i)?;
+        self.check_compress::<T>();
+        Ok(())
     }
 
     //Entity-Component: marks an entity's components as free for the memory manager and invalidates the entity.
     pub fn ecfree(&mut self, entity: Entity) -> Result<(), ErrEcs> {
-        self.emanager.deactivate_entity(&entity)?;
         for (k, v) in self.cownership.get_entity_components_iter_mut(&entity) {
             self.cmanager.cremove_by_id(k, *v)?;
         }
         self.cownership.remove_entry(&entity)?;
-        Ok(())
-    }
-
-    //Component: start compressing component memory using component/memory.rs
-    pub fn ccompress(&mut self) -> Result<(), ErrEcs> {
-        let mem = Memory::new();
-
         Ok(())
     }
 
@@ -87,7 +87,22 @@ impl Level {
     }
 
     pub fn is_entity_active(&self, e: &Entity) -> bool {
-        self.emanager.is_entity_active(e)
+        self.cownership.is_entity_active(e)
+    }
+
+    //check to see if memory needs to be compressed.
+    fn check_compress<T: Any>(&mut self) {
+        if self.ccapacity::<T>() > 0 {
+            if (self.clen::<T>() / self.ccapacity::<T>()) as f64 >= self.compression_ratio {
+                self.compress::<T>();
+            }
+        }
+    }
+
+    //compress memory of a type.
+    fn compress<T: Any>(&mut self) {
+        let mem = Memory::new();
+        mem.compress::<T>(&mut self.cmanager, &mut self.cownership);
     }
 
     //get the component index if it is owned by the entity.
