@@ -54,4 +54,6 @@ pub enum ErrEcs {
     EManagerWrongIdForToken(String),
 
     LevelStorageCapacityLessThanOrEqualToZero(String),
+
+    UnimplementedErrorType(String),
 }

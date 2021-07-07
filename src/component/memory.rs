@@ -2,6 +2,7 @@ use std::any::{Any, TypeId};
 
 use crate::component::{CManager, COwnership};
 use crate::entity::Entity;
+use crate::ErrEcs;
 
 //Memory management for component storage.
 //Memory MUST know which entity owns each index. Try to use COwnership to iterate?
@@ -12,24 +13,19 @@ impl Memory {
         Memory {}
     }
 
-    //for each component in storage
-        //let i = active component index
-        //let j = free component index
-        //let e = owner of component[i]
+    pub fn compress<T: Any>(&self, cmanager: &mut CManager, cownership: &mut COwnership) -> Result<(), ErrEcs> {
+        //map of *cloned* index->entity_id for ownership reference.
+        let index_owned_by_entity_map = cownership.get_index_entity_map::<T>();
+        for i in index_owned_by_entity_map.keys() {
+            let j = cmanager.unsafe_swap_with_free::<T>(*i);
+            let eid = index_owned_by_entity_map.get(&i).unwrap();
+            cownership.update_index_by_id(*eid, &TypeId::of::<T>(), j);
+        }
 
-        //get active component index: i
-        //get entity: e of c[i] //This funcitonality is required at the moment...
-        //get free index: j
-        //swap c[i] and c[j] to move active index as far left in the vector as possible.
-        //set cownership[e[type]] = j to update entity's owned component index.
-
-    //after loop:
-        //truncate all vector data after len+1
-        //ensure that free_q is empty.
-        //update next_free to be len+1 of compressed vector.
-
-    pub fn compress<T: Any>(&self, cmanager: &mut CManager, cownership: &mut COwnership) {
-        let eids = cownership.get_entity_ids();
-        for
+        let new_len = cmanager.len::<T>();
+        print!("newlen: {}, size of map: {}, plen: {}, pcap: {}\n", new_len, index_owned_by_entity_map.len(), cmanager.plen::<T>(), cmanager.pcapacity::<T>());
+        let new_len = cmanager.reset_free::<T>()?;
+        cmanager.cresize::<T>(new_len)?;
+        Ok(())
     }
 }

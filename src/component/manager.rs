@@ -40,6 +40,10 @@ impl CManager {
         }
     }
 
+    pub fn cresize<T: Any>(&mut self, new_size: usize) -> Result<(), ErrEcs> {
+        self.components.storage.resize::<T>(new_size)
+    }
+
     pub fn cget<T: Any>(&self, i: usize) -> Result<&T, ErrEcs> {
         self.components.storage.get::<T>(i)
     }
@@ -59,16 +63,24 @@ impl CManager {
     // an entity's owned component index which may result in index out of bounds or other errors
     // such as an entity accessing another entity's component. Use with caution.
     //swap element at i with a free index j. c[j] = c[i].
-    pub fn unsafe_swap_with_free<T: Any>(&mut self, i: usize) {
-        self.components.storage.swap::<T>(i, self.find_available_index::<T>());
+    pub fn unsafe_swap_with_free<T: Any>(&mut self, i: usize) -> usize {
+        let j = self.find_available_index::<T>();
+        self.components.storage.swap::<T>(i, j);
+        if let Some(entry) = self.components.free.get_mut(&TypeId::of::<T>()) {
+            entry.free_q.push_back(i);
+        } else { panic!("Failed to find type in unsafe function.") }
+        j
     }
 
     //Resets the FreeEntry of a type to correctly reflect the capacity of the vector and empties the queue.
-    pub fn reset_free<T: Any>(&mut self) -> Result<(), ErrEcs> {
+    //returns next free.
+    pub fn reset_free<T: Any>(&mut self) -> Result<usize, ErrEcs> {
+        let new_next_free = self.len::<T>() + 1;
+        print!("next free:{}\n", new_next_free);
         if let Some(entry) = self.components.free.get_mut(&TypeId::of::<T>()) {
-            entry.next_free = self.capacity::<T>();
+            entry.next_free = new_next_free;
             entry.free_q.clear();
-            Ok(())
+            Ok(new_next_free)
         } else { Err(ErrEcs::CManagerTypeNotFound(format!("reset_free type_name: {}", type_name::<T>()))) }
     }
 
@@ -80,6 +92,14 @@ impl CManager {
     //Returns len of storage for the given type.
     pub fn len<T: Any>(&self) -> usize {
         self.components.storage.len::<T>()
+    }
+
+    pub fn plen<T: Any>(&self) -> usize {
+        self.components.packer.len::<T>()
+    }
+
+    pub fn pcapacity<T: Any>(&self) -> usize {
+        self.components.packer.capacity::<T>()
     }
 
     pub fn cremove<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {

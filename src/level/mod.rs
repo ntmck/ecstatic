@@ -1,8 +1,9 @@
-use crate::component::*;
-use crate::entity::*;
 use std::collections::HashMap;
 use std::any::{Any, TypeId};
 use std::any::type_name;
+
+use crate::component::*;
+use crate::entity::*;
 use crate::ErrEcs;
 
 pub struct Level {
@@ -17,6 +18,8 @@ pub struct Level {
 }
 
 impl Level {
+    const CAPACITY_LIMIT_TO_BEGIN_CHECKING_MEMORY: usize = 10000;
+
     pub fn new(compression_ratio: f64) -> Level {
         Level {
             emanager: EManager::new(),
@@ -92,7 +95,7 @@ impl Level {
 
     //check to see if memory needs to be compressed.
     fn check_compress<T: Any>(&mut self) -> Result<(), ErrEcs> {
-        if self.ccapacity::<T>() > 0 {
+        if self.ccapacity::<T>() >= Level::CAPACITY_LIMIT_TO_BEGIN_CHECKING_MEMORY {
             if (self.clen::<T>() / self.ccapacity::<T>()) as f64 <= self.compression_ratio {
                 self.compress_component_memory::<T>();
             }
@@ -106,6 +109,8 @@ impl Level {
         mem.compress::<T>(&mut self.cmanager, &mut self.cownership);
         Ok(())
     }
+
+    // vvv RENAME BELOW. vvv
 
     //get the component index if it is owned by the entity.
     fn get_cindex<T: Any>(&mut self, e: &Entity) -> Result<usize, ErrEcs> {

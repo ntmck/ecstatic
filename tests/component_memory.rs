@@ -45,22 +45,26 @@ fn setup_layout_2() -> Level {
 pub fn test_compress_memory_layout_1() {
     let mut level = setup_layout_1();
 
-    match level.compress_component_memory() {
+    match level.compress_component_memory::<Position2d>() {
         Ok(_) => (),
         Err(e) => assert!(false, "{:#?}", e)
     }
 
-    assert!(level.clen::<Position2d>() == 1 && level.ccapacity::<Position2d>() == 1, "Failed to compress layout 1.");
+    assert!(level.clen::<Position2d>() == 1 && level.ccapacity::<Position2d>() == 1,
+     "Failed to compress layout 1. len: {}, capacity: {}",
+     level.clen::<Position2d>(), level.ccapacity::<Position2d>());
 }
 
 #[test]
 pub fn test_compress_memory_layout_2() {
     let mut level = setup_layout_2();
 
-    match level.compress_component_memory() {
+    match level.compress_component_memory::<Position2d>() {
         Ok(_) => (),
         Err(e) => assert!(false, "{:#?}", e)
     }
 
-    assert!(level.clen::<Position2d>() == 50 && level.ccapacity::<Position2d>() == 50, "Failed to compress layout 2.");
+    assert!(level.clen::<Position2d>() == 50 && level.ccapacity::<Position2d>() == 50,
+     "Failed to compress layout 2. len: {}, capacity: {}",
+     level.clen::<Position2d>(), level.ccapacity::<Position2d>());
 }

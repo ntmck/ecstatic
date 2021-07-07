@@ -21,10 +21,7 @@ impl Storage {
 
         pub fn swap_by_id(&mut self, type_id: &TypeId, i: usize, j: usize) {
             if let Some(cmps) = self.stored.get_mut(type_id) {
-                let tempi = cmps.remove(i);
-                let tempj = cmps.remove(j);
-                cmps[i] = tempj;
-                cmps[j] = tempi;
+                cmps.swap(i, j);
             } else { panic!("unimplemented error handling") }
         }
 
@@ -52,8 +49,8 @@ impl Storage {
             if let Some(vec) = self.stored.get(&TypeId::of::<T>()) {
                 if let Some(cmp) = vec[i].downcast_ref::<T>() {
                     Ok(cmp)
-                } else { Err(ErrEcs::StorageComponentNotFound(format!("cget type: {} index: {}", type_name::<T>(), i))) }
-            } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("cget type: {}", type_name::<T>()))) }
+                } else { Err(ErrEcs::StorageComponentNotFound(format!("get type: {} index: {}", type_name::<T>(), i))) }
+            } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("get type: {}", type_name::<T>()))) }
         }
 
         pub fn insert<T: Any>(&mut self, i: usize, comp: T) {
@@ -65,7 +62,7 @@ impl Storage {
                     vec.insert(i, Box::new(comp));
                     break;
                 } else {
-                    self.stored.insert(TypeId::of::<T>(), vec![]);
+                    self.stored.insert(TypeId::of::<T>(), Vec::with_capacity(1));
                 }
             }
         }
@@ -78,13 +75,20 @@ impl Storage {
             if let Some(vec) = self.stored.get_mut(type_id) {
                 vec[i] = Box::new(0u8);
                 Ok(())
-            } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("cremove type_id: {:#?}", type_id))) }
+            } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("remove_by_id type_id: {:#?}", type_id))) }
         }
 
         pub fn set<T: Any>(&mut self, i: usize, comp: T) -> Result<(), ErrEcs> {
             if let Some(vec) = self.stored.get_mut(&TypeId::of::<T>()) {
                 vec[i] = Box::new(comp);
                 Ok(())
-            } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("cset type: {}", type_name::<T>()))) }
+            } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("set type: {}", type_name::<T>()))) }
+        }
+
+        pub fn resize<T: Any>(&mut self, new_size: usize) -> Result<(), ErrEcs> {
+            if let Some(vec) = self.stored.get_mut(&TypeId::of::<T>()) {
+                vec.resize_with(new_size, || {Box::new(0u8)});
+                Ok(())
+            } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("truncate type_id: {:#?}", TypeId::of::<T>()))) }
         }
 }
