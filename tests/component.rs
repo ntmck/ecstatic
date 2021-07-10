@@ -35,7 +35,7 @@ pub fn test_insert_multiple_components() {
     let pos1 = level.ecget::<Position2d>(&entity).unwrap();
     assert!(0.0 == pos1.x && 0.1 == pos1.y);
     let pos2 = level.ecget::<Position3d>(&entity).unwrap();
-    assert!(0.2 == pos2.x && 0.3 == pos2.y, 0.4 == pos2.z);
+    assert!(0.2 == pos2.x && 0.3 == pos2.y && 0.4 == pos2.z);
 }
 
 #[test]

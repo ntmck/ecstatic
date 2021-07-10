@@ -1,6 +1,6 @@
 [package]
 name = "ecstatic"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Nathan McKnight <@ntmck1@gmail.com>"]
 edition = "2018"
 

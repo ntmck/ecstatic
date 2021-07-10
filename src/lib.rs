@@ -18,11 +18,11 @@ For more details see: <http://www.gnu.org/licenses/>.
 
 */
 
-mod entity;
-mod component;
-mod system;
-mod data;
-mod level;
+pub mod entity;
+pub mod component;
+pub mod system;
+pub mod data;
+pub mod level;
 
 use level::*;
 pub use data::*;
@@ -31,19 +31,29 @@ pub struct Ecs;
 
 impl Ecs {
     pub fn new_level() -> Level {
-        Level::new()
+        //Default compression ratio: 0.2 in which 80% of capacity is unused.
+        Level::new(0.2f64)
     }
 }
 
 #[derive(Debug)]
 pub enum ErrEcs {
-    CManagerComponentTypeNotFound(String),
-    CManagerComponentNotFound(String),
-    CManagerUnpackIndexNotFound(String),
+    StorageComponentTypeNotFound(String),
+    StorageComponentNotFound(String),
+
+    PackerUnpackIndexOutOfBounds(String),
+
     CManagerComponentAlreadyExistsForEntity(String),
-    CManagerEntityNotFound(String),
+    CManagerTypeNotFound(String),
+
+    COwnershipEntityNotFound(String),
+    COwnershipComponentNotFound(String),
 
     EManagerOwnerAuthNotFound(String),
     EManagerActiveEntityNotFound(String),
     EManagerWrongIdForToken(String),
+
+    LevelStorageCapacityLessThanOrEqualToZero(String),
+
+    UnimplementedErrorType(String),
 }
