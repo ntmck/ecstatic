@@ -48,7 +48,6 @@ impl Packer {
         loop {
             if let Some(vec) = self.packed.get_mut(type_id) {
                 vec.insert(i);
-                print!("packed len: {}\n", vec.len());
                 break;
             } else {
                 self.packed.insert(*type_id, HashSet::new());
@@ -64,7 +63,6 @@ impl Packer {
     pub fn unpack_by_id(&mut self, type_id: &TypeId, i: usize) -> Result<(), ErrEcs> {
         if let Some(set) = self.packed.get_mut(type_id) {
             set.remove(&i);
-            print!("unpacked len: {}\n", set.len());
             return Ok(())
         }
         Err(ErrEcs::PackerUnpackIndexOutOfBounds(format!("attempt to unpack non-existent element from packed. index: {}", i)))

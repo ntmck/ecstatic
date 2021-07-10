@@ -24,8 +24,8 @@ impl Memory {
             cmanager.pack::<T>(j);
             keys_len += 1;
         }
-        let new_len = cmanager.reset_free::<T>(keys_len)?;
-        cmanager.cresize::<T>(keys_len)?;
+        let new_len = cmanager.reset_free::<T>(keys_len + 1)?;
+        cmanager.cresize::<T>(keys_len + 1)?;
         Ok(())
     }
 }

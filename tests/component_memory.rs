@@ -31,6 +31,26 @@ fn setup_layout_1() -> Level {
     level
 }
 
+fn setup_layout_1_last_entity() -> (Level, Entity) {
+    let mut level = Ecs::new_level();
+    let mut ev: Vec<Entity> = vec![];
+
+    for i in 0..99 {
+        let e = level.espawn();
+        level.ecgive::<Position2d>(&e, Position2d{x:0.0, y:0.0});
+        ev.push(e.clone());
+    }
+
+    let e = level.espawn();
+    level.ecgive::<Position2d>(&e, Position2d{x:1.0, y:2.0});
+    ev.push(e.clone());
+
+    for i in 0..99 {
+        level.ecfree(ev[i]);
+    }
+    (level, e)
+}
+
 //Setup Memory Layout 2: [2i = None], [2i+1 = Some]
 fn setup_layout_2() -> Level {
     let mut level = Ecs::new_level();
@@ -48,6 +68,58 @@ fn setup_layout_2() -> Level {
     level
 }
 
+fn setup_layout_2_entities() -> (Level, Vec<Entity>) {
+    let mut level = Ecs::new_level();
+    let mut ev: Vec<Entity> = vec![];
+
+    for i in 0..100 {
+        let e = level.espawn();
+        level.ecgive::<Position2d>(&e, Position2d{x:i as f64, y:i as f64 + 1.0}); //x = i, y = i+1
+        ev.push(e.clone());
+    }
+    let mut validate_entities = vec![];
+    for i in 0..100 {
+        if i%2 == 0 {
+            level.ecfree(ev[i]);
+        } else {
+            validate_entities.push(ev[i]);
+        }
+    }
+    (level, validate_entities)
+}
+
+#[test]
+pub fn test_compress_memory_layout_1_validate_entity() {
+    let (mut level, entity) = setup_layout_1_last_entity();
+    match level.compress_component_memory::<Position2d>() {
+        Ok(_) => (),
+        Err(e) => assert!(false, "{:#?}", e)
+    }
+    match level.ecget::<Position2d>(&entity) {
+        Ok(pos) => {assert!(pos.x == 1.0 && pos.y == 2.0, "Failed to validate entity.")},
+        Err(e) => panic!("{:#?}", e)
+    }
+}
+
+//Throws index out of bounds only sometimes. weird. maybe increase capacity by 1 in resize?
+#[test]
+pub fn test_compress_memory_layout_2_validate_entities() {
+    let (mut level, evec) = setup_layout_2_entities();
+    match level.compress_component_memory::<Position2d>() {
+        Ok(_) => (),
+        Err(e) => assert!(false, "{:#?}", e)
+    }
+    for (i, e) in evec.iter().enumerate() {
+        match level.ecget::<Position2d>(e) {
+            Ok(pos) => { //expect x=2i+1 & y=2i+2
+                assert!(pos.x == 2.0*i as f64+1.0 && pos.y == 2.0*i as f64+2.0,
+                "Failed to validate entities.");
+            },
+            Err(e) => panic!("{:#?}", e)
+        }
+    }
+}
+
 #[test]
 pub fn test_compress_memory_layout_1() {
     let mut level = setup_layout_1();
@@ -57,7 +129,7 @@ pub fn test_compress_memory_layout_1() {
         Err(e) => assert!(false, "{:#?}", e)
     }
 
-    assert!(level.clen::<Position2d>() == 1 && level.ccapacity::<Position2d>() == 1,
+    assert!(level.clen::<Position2d>() == 2 && level.ccapacity::<Position2d>() == 2,
      "Failed to compress layout 1. len: {}, capacity: {}",
      level.clen::<Position2d>(), level.ccapacity::<Position2d>());
 }
@@ -71,7 +143,7 @@ pub fn test_compress_memory_layout_2() {
         Err(e) => assert!(false, "{:#?}", e)
     }
 
-    assert!(level.clen::<Position2d>() == 50 && level.ccapacity::<Position2d>() == 50,
+    assert!(level.clen::<Position2d>() == 51 && level.ccapacity::<Position2d>() == 51,
      "Failed to compress layout 2. len: {}, capacity: {}",
      level.clen::<Position2d>(), level.ccapacity::<Position2d>());
 }

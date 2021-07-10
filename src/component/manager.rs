@@ -68,6 +68,7 @@ impl CManager {
         self.components.storage.swap::<T>(i, j);
         if let Some(entry) = self.components.free.get_mut(&TypeId::of::<T>()) {
             entry.free_q.push_back(i);
+            entry.free_q.make_contiguous().sort();
         } else { panic!("Failed to find type in unsafe function.") }
         j
     }
