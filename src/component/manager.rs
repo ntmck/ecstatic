@@ -55,7 +55,7 @@ impl CManager {
     pub fn cinsert<T: Any>(&mut self, comp: T) -> usize {
         let i = self.find_available_index::<T>();
         self.components.storage.insert::<T>(i, comp);
-        self.pack::<T>(i);
+        self.components.packer.pack::<T>(i);
         i
     }
 
@@ -74,13 +74,12 @@ impl CManager {
 
     //Resets the FreeEntry of a type to correctly reflect the capacity of the vector and empties the queue.
     //returns next free.
-    pub fn reset_free<T: Any>(&mut self) -> Result<usize, ErrEcs> {
-        let new_next_free = self.len::<T>() + 1;
-        print!("next free:{}\n", new_next_free);
+    pub fn reset_free<T: Any>(&mut self, to: usize) -> Result<(), ErrEcs> {
+        let new_next_free = to + 1;
         if let Some(entry) = self.components.free.get_mut(&TypeId::of::<T>()) {
             entry.next_free = new_next_free;
             entry.free_q.clear();
-            Ok(new_next_free)
+            Ok(())
         } else { Err(ErrEcs::CManagerTypeNotFound(format!("reset_free type_name: {}", type_name::<T>()))) }
     }
 
@@ -105,6 +104,7 @@ impl CManager {
     pub fn cremove<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
         self.cremove_by_id(&TypeId::of::<T>(), i)
     }
+
     //frees an index for reuse and sets the memory of a type at index to 0.
     pub fn cremove_by_id(&mut self, type_id: &TypeId, i: usize) -> Result<(), ErrEcs> {
         self.free_index_by_id(type_id, i);
@@ -112,14 +112,12 @@ impl CManager {
         self.components.storage.remove_by_id(type_id, i)
     }
 
-    //Packs a new index for a component in the packed array.
-    fn pack<T: Any>(&mut self, i: usize) {
+    pub fn pack<T: Any>(&mut self, i: usize) {
         self.components.packer.pack::<T>(i);
     }
 
-    //Unpacks index from packed array for component.
-    fn unpack<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
-        self.components.packer.unpack::<T>(i)
+    pub fn unpack<T: Any>(&mut self, i: usize) {
+        self.components.packer.unpack::<T>(i);
     }
 
     //Inserts a freed an index for use later.

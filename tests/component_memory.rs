@@ -1,3 +1,10 @@
+/*
+Ideas:
+    try to remove from len to capacity then shrink to fit?
+    try to replace the underlying vector with a new vector?
+    try to keep our own count of the number of components inside a vector and compare?
+*/
+
 use std::assert;
 use std::vec::Vec;
 
@@ -34,7 +41,7 @@ fn setup_layout_2() -> Level {
         level.ecgive::<Position2d>(&e, Position2d{x:0.0, y:0.0});
         ev.push(e.clone());
     }
-    //free half the memory. len = 50, capacity = 100.
+    //free half the memory. len = 50, capacity = ~100.
     for i in 0..100 {
         if i%2 == 0 { level.ecfree(ev[i]); }
     }
@@ -67,4 +74,32 @@ pub fn test_compress_memory_layout_2() {
     assert!(level.clen::<Position2d>() == 50 && level.ccapacity::<Position2d>() == 50,
      "Failed to compress layout 2. len: {}, capacity: {}",
      level.clen::<Position2d>(), level.ccapacity::<Position2d>());
+}
+
+#[test]
+pub fn test_compress_memory_layout_1_packer() {
+    let mut level = setup_layout_1();
+
+    match level.compress_component_memory::<Position2d>() {
+        Ok(_) => (),
+        Err(e) => assert!(false, "{:#?}", e)
+    }
+
+    assert!(level.plen::<Position2d>() == 1,
+    "Failed to manage the packer during compression of layout 1. plen: {}",
+    level.plen::<Position2d>());
+}
+
+#[test]
+pub fn test_compress_memory_layout_2_packer() {
+    let mut level = setup_layout_2();
+
+    match level.compress_component_memory::<Position2d>() {
+        Ok(_) => (),
+        Err(e) => assert!(false, "{:#?}", e)
+    }
+
+    assert!(level.plen::<Position2d>() == 50,
+    "Failed to manage the packer during compression of layout 2. plen: {}",
+    level.plen::<Position2d>());
 }

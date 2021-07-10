@@ -32,10 +32,8 @@ impl COwnership {
         map
     }
 
-    pub fn get_entity_components_iter_mut(&mut self, e: &Entity) -> IterMut<TypeId, usize> {
-        if let Some(cmap) = self.ownership.get_mut(&e.id) {
-            cmap.iter_mut()
-        } else { panic!("unimplemented error handling"); }
+    pub fn insert_new(&mut self, entity: &Entity) {
+        self.ownership.insert(entity.id, HashMap::new());
     }
 
     pub fn insert<T: Any>(&mut self, i: usize, e: &Entity) {
@@ -69,28 +67,31 @@ impl COwnership {
     }
 
     pub fn get_cindex<T: Any>(&self, e: &Entity) -> Result<usize, ErrEcs> {
-        self.get_cindex_by_id(e.id, TypeId::of::<T>())
+        self.get_cindex_by_id(e.id, &TypeId::of::<T>())
     }
 
-    pub fn get_cindex_by_id(&self, eid: u64, type_id: TypeId) -> Result<usize, ErrEcs> {
+    pub fn get_cindex_by_id(&self, eid: u64, type_id: &TypeId) -> Result<usize, ErrEcs> {
         if let Some(cmap) = self.ownership.get(&eid) {
-            if let Some(i) = cmap.get(&type_id) {
+            if let Some(i) = cmap.get(type_id) {
                 Ok(*i)
             } else { Err(ErrEcs::COwnershipComponentNotFound(format!("get_cindex entity does not have component. type_id: {:#?}", type_id))) }
         } else { Err(ErrEcs::COwnershipEntityNotFound(format!("get_cindex entity not found in ownership. entity: {}", eid))) }
     }
 
     pub fn remove<T: Any>(&mut self, e: &Entity) -> Result<(), ErrEcs> {
-        self.remove_by_id(e.id, TypeId::of::<T>())
+        self.remove_by_id(e.id, &TypeId::of::<T>())
     }
 
-    pub fn remove_by_id(&mut self, eid: u64, type_id: TypeId) -> Result<(), ErrEcs> {
+    pub fn remove_by_id(&mut self, eid: u64, type_id: &TypeId) -> Result<(), ErrEcs> {
         if let Some(cmap) = self.ownership.get_mut(&eid) {
             cmap.remove(&type_id);
             Ok(())
         } else { Err(ErrEcs::COwnershipEntityNotFound(format!("ownership.remove() entity not found in ownership. entity: {}", eid))) }
     }
 
+    //BUG?: This function isn't getting everything it needs i think.
+    //  layout1 deletes 50 leaving 50 in map for a total of 100
+    //  layout2 deletes 35 leaving 66 in map for a total of 101
     pub fn remove_entry(&mut self, e: &Entity) -> Result<(), ErrEcs> {
         match self.ownership.remove(&e.id) {
             Some(_) => Ok(()),

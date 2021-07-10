@@ -14,18 +14,18 @@ impl Memory {
     }
 
     pub fn compress<T: Any>(&self, cmanager: &mut CManager, cownership: &mut COwnership) -> Result<(), ErrEcs> {
-        //map of *cloned* index->entity_id for ownership reference.
         let index_owned_by_entity_map = cownership.get_index_entity_map::<T>();
+        let mut keys_len = 0;
         for i in index_owned_by_entity_map.keys() {
             let j = cmanager.unsafe_swap_with_free::<T>(*i);
             let eid = index_owned_by_entity_map.get(&i).unwrap();
             cownership.update_index_by_id(*eid, &TypeId::of::<T>(), j);
+            cmanager.unpack::<T>(*i);
+            cmanager.pack::<T>(j);
+            keys_len += 1;
         }
-
-        let new_len = cmanager.len::<T>();
-        print!("newlen: {}, size of map: {}, plen: {}, pcap: {}\n", new_len, index_owned_by_entity_map.len(), cmanager.plen::<T>(), cmanager.pcapacity::<T>());
-        let new_len = cmanager.reset_free::<T>()?;
-        cmanager.cresize::<T>(new_len)?;
+        let new_len = cmanager.reset_free::<T>(keys_len)?;
+        cmanager.cresize::<T>(keys_len)?;
         Ok(())
     }
 }

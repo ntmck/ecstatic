@@ -88,7 +88,8 @@ impl Storage {
         pub fn resize<T: Any>(&mut self, new_size: usize) -> Result<(), ErrEcs> {
             if let Some(vec) = self.stored.get_mut(&TypeId::of::<T>()) {
                 vec.resize_with(new_size, || {Box::new(0u8)});
+                vec.shrink_to_fit();
                 Ok(())
-            } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("truncate type_id: {:#?}", TypeId::of::<T>()))) }
+            } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("resize type_id: {:#?}", TypeId::of::<T>()))) }
         }
 }
