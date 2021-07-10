@@ -1,7 +1,7 @@
 use std::vec::Vec;
 use std::any::{Any, TypeId};
 use std::any::type_name;
-use std::collections::{HashSet, HashMap, VecDeque};
+use std::collections::{HashSet, HashMap, BTreeSet};
 
 use crate::ErrEcs;
 use super::storage::Storage;
@@ -9,7 +9,7 @@ use super::packer::Packer;
 
 pub struct FreeEntry {
     pub next_free: usize,
-    pub free_q: VecDeque<usize>,
+    pub free_q: BTreeSet<usize>,
 }
 
 //REQUIREMENTS:
@@ -67,8 +67,7 @@ impl CManager {
         let j = self.find_available_index::<T>();
         self.components.storage.swap::<T>(i, j);
         if let Some(entry) = self.components.free.get_mut(&TypeId::of::<T>()) {
-            entry.free_q.push_back(i);
-            entry.free_q.make_contiguous().sort();
+            entry.free_q.insert(i);
         } else { panic!("Failed to find type in unsafe function.") }
         j
     }
@@ -129,10 +128,10 @@ impl CManager {
     fn free_index_by_id(&mut self, type_id: &TypeId, i: usize) {
         loop {
             if let Some(entry) = self.components.free.get_mut(type_id) {
-                entry.free_q.push_back(i);
+                entry.free_q.insert(i);
                 break;
             } else {
-                self.components.free.insert(*type_id, FreeEntry{next_free: 0, free_q: VecDeque::new()});
+                self.components.free.insert(*type_id, FreeEntry{next_free: 0, free_q: BTreeSet::new()});
             }
         }
     }
@@ -146,15 +145,16 @@ impl CManager {
         let i;
         loop {
             if let Some(entry) = self.components.free.get_mut(type_id) {
-                if let Some(next) = entry.free_q.pop_front() {
-                    i = next;
+                if let Some(next) = entry.free_q.first() {
+                    i = next.clone();
                 } else {
                     i = entry.next_free;
                     entry.next_free += 1;
                 }
+                entry.free_q.remove(&i);
                 break;
             } else { //may cause issues in memory compression later in development...
-                self.components.free.insert(*type_id, FreeEntry{next_free: 0, free_q: VecDeque::new()});
+                self.components.free.insert(*type_id, FreeEntry{next_free: 0, free_q: BTreeSet::new()});
             }
         }
         i

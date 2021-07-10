@@ -18,6 +18,8 @@ For more details see: <http://www.gnu.org/licenses/>.
 
 */
 
+#![feature(map_first_last)]
+
 pub mod entity;
 pub mod component;
 pub mod system;
