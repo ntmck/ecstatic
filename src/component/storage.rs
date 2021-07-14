@@ -5,6 +5,11 @@ use std::collections::HashMap;
 
 use crate::ErrEcs;
 
+//Storage empty type.
+enum S {
+    Empty,
+}
+
 //Component storage
 pub struct Storage {
     stored: HashMap<TypeId, Vec<Box<dyn Any>>>,
@@ -73,7 +78,7 @@ impl Storage {
 
         pub fn remove_by_id(&mut self, type_id: &TypeId, i: usize) -> Result<(), ErrEcs> {
             if let Some(vec) = self.stored.get_mut(type_id) {
-                vec[i] = Box::new(0u8);
+                vec[i] = Box::new(S::Empty);
                 Ok(())
             } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("remove_by_id type_id: {:#?}", type_id))) }
         }
@@ -87,7 +92,7 @@ impl Storage {
 
         pub fn resize<T: Any>(&mut self, new_size: usize) -> Result<(), ErrEcs> {
             if let Some(vec) = self.stored.get_mut(&TypeId::of::<T>()) {
-                vec.resize_with(new_size, || {Box::new(0u8)});
+                vec.resize_with(new_size, || {Box::new(S::Empty)});
                 vec.shrink_to_fit();
                 Ok(())
             } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("resize type_id: {:#?}", TypeId::of::<T>()))) }

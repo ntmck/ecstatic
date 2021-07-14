@@ -1,6 +1,6 @@
 /*
 
-ECStatic game engine designed for use in small games.
+ECStatic game engine designed for use in small 2d games.
 
 Copyright (C) 2021 Nathan McKnight <ntmck1@gmail.com>
 

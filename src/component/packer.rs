@@ -1,8 +1,5 @@
-use std::vec::Vec;
 use std::any::{Any, TypeId};
-use std::any::type_name;
 use std::collections::{HashMap, HashSet};
-use core::slice::{Iter, IterMut};
 
 use crate::ErrEcs;
 
@@ -59,7 +56,6 @@ impl Packer {
         self.unpack_by_id(&TypeId::of::<T>(), i)
     }
 
-    //Currently bugged because of the shifting nature of a vector.
     pub fn unpack_by_id(&mut self, type_id: &TypeId, i: usize) -> Result<(), ErrEcs> {
         if let Some(set) = self.packed.get_mut(type_id) {
             set.remove(&i);

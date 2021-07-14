@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::any::{Any, TypeId};
-use std::collections::hash_map::IterMut;
 
 use crate::entity::Entity;
 use crate::ErrEcs;
@@ -89,9 +88,6 @@ impl COwnership {
         } else { Err(ErrEcs::COwnershipEntityNotFound(format!("ownership.remove() entity not found in ownership. entity: {}", eid))) }
     }
 
-    //BUG?: This function isn't getting everything it needs i think.
-    //  layout1 deletes 50 leaving 50 in map for a total of 100
-    //  layout2 deletes 35 leaving 66 in map for a total of 101
     pub fn remove_entry(&mut self, e: &Entity) -> Result<(), ErrEcs> {
         match self.ownership.remove(&e.id) {
             Some(_) => Ok(()),

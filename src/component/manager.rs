@@ -1,7 +1,6 @@
-use std::vec::Vec;
 use std::any::{Any, TypeId};
 use std::any::type_name;
-use std::collections::{HashSet, HashMap, BTreeSet};
+use std::collections::{HashMap, BTreeSet};
 
 use crate::ErrEcs;
 use super::storage::Storage;
@@ -11,10 +10,6 @@ pub struct FreeEntry {
     pub next_free: usize,
     pub free_q: BTreeSet<usize>,
 }
-
-//REQUIREMENTS:
-//  Swap 2 components only using the indices we want to swap.
-//  Get function for packed/free?
 
 pub struct Components {
     //component_mask(type of component)->components
@@ -116,13 +111,8 @@ impl CManager {
         self.components.packer.pack::<T>(i);
     }
 
-    pub fn unpack<T: Any>(&mut self, i: usize) {
-        self.components.packer.unpack::<T>(i);
-    }
-
-    //Inserts a freed an index for use later.
-    fn free_index<T: Any>(&mut self, i: usize) {
-        self.free_index_by_id(&TypeId::of::<T>(), i);
+    pub fn unpack<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
+        self.components.packer.unpack::<T>(i)
     }
 
     fn free_index_by_id(&mut self, type_id: &TypeId, i: usize) {

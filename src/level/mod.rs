@@ -1,9 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::any::{Any, TypeId};
 use std::any::type_name;
 
 use crate::component::*;
 use crate::entity::*;
+//use crate::system::*;
 use crate::ErrEcs;
 
 pub struct Level {
@@ -60,6 +61,7 @@ impl Level {
         self.cmanager.cget::<T>(i)
     }
 
+    //Entity-Component: updates an entity's component.
     pub fn ecset<T: Any>(&mut self, entity: &Entity, component: T) -> Result<(), ErrEcs> {
         let i = self.cownership.get_cindex::<T>(entity)?;
         self.cmanager.cset::<T>(i, component)?;
@@ -119,7 +121,7 @@ impl Level {
     fn check_compress<T: Any>(&mut self) -> Result<(), ErrEcs> {
         if self.ccapacity::<T>() >= Level::CAPACITY_LIMIT_TO_BEGIN_CHECKING_MEMORY {
             if (self.clen::<T>() / self.ccapacity::<T>()) as f64 <= self.compression_ratio {
-                self.compress_component_memory::<T>();
+                self.compress_component_memory::<T>()?;
             }
             Ok(())
         } else { Err(ErrEcs::LevelStorageCapacityLessThanOrEqualToZero(format!("Avoided divison by 0 or negative in check_compress."))) }
@@ -127,8 +129,7 @@ impl Level {
 
     //compress memory of a type.
     pub fn compress_component_memory<T: Any>(&mut self) -> Result<(), ErrEcs> {
-        let mem = Memory::new();
-        mem.compress::<T>(&mut self.cmanager, &mut self.cownership);
+        Memory::compress::<T>(&mut self.cmanager, &mut self.cownership)?;
         Ok(())
     }
 }

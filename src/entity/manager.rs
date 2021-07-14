@@ -1,8 +1,6 @@
-use std::collections::{HashSet, hash_map::DefaultHasher};
+use std::collections::hash_map::DefaultHasher;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::hash::{Hash, Hasher};
-
-use crate::ErrEcs;
 
 #[derive(Clone, Copy)]
 pub struct Entity {
