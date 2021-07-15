@@ -4,7 +4,7 @@ use std::any::type_name;
 
 use crate::component::*;
 use crate::entity::*;
-//use crate::system::*;
+use crate::system::*;
 use crate::ErrEcs;
 
 pub struct Level {
@@ -33,7 +33,7 @@ impl Level {
         }
     }
 
-    //Entity: spawns an entity with no components. TODO: Perhaps later, spawn with default components.
+    //Entity: spawns an entity with no components.
     pub fn espawn(&mut self) -> Entity {
         let e = self.emanager.create();
         self.cownership.insert_new(&e);
@@ -41,7 +41,8 @@ impl Level {
     }
 
     //Entity-Component: gives an entity the supplied component. Does nothing if it already exists.
-    pub fn ecgive<T: Any>(&mut self, entity: &Entity, component: T) -> Result<(), ErrEcs> {
+    pub fn ecgive<T>(&mut self, entity: &Entity, component: T) -> Result<(), ErrEcs>
+    where T: Any + Send + Sync {
         if let Ok(_) = self.cownership.get_cindex::<T>(entity) {
             return Err(ErrEcs::CManagerComponentAlreadyExistsForEntity(
                 format!("ecgive entity: {} type: {}", entity.id, type_name::<T>())
@@ -56,13 +57,15 @@ impl Level {
     }
 
     //Entity-Component: returns a reference to an entity's component.
-    pub fn ecget<T: Any>(&mut self, entity: &Entity) -> Result<&T, ErrEcs> {
+    pub fn ecget<T>(&mut self, entity: &Entity) -> Result<&T, ErrEcs>
+    where T: Any + Send + Sync {
         let i = self.cownership.get_cindex::<T>(entity)?;
         self.cmanager.cget::<T>(i)
     }
 
     //Entity-Component: updates an entity's component.
-    pub fn ecset<T: Any>(&mut self, entity: &Entity, component: T) -> Result<(), ErrEcs> {
+    pub fn ecset<T>(&mut self, entity: &Entity, component: T) -> Result<(), ErrEcs>
+    where T: Any + Send + Sync {
         let i = self.cownership.get_cindex::<T>(entity)?;
         self.cmanager.cset::<T>(i, component)?;
         self.check_compress::<T>()?;
@@ -70,7 +73,8 @@ impl Level {
     }
 
     //Entity-Component: removes component from given entity.
-    pub fn ecremove<T: Any>(&mut self, entity: &Entity) -> Result<(), ErrEcs> {
+    pub fn ecremove<T>(&mut self, entity: &Entity) -> Result<(), ErrEcs>
+    where T: Any + Send + Sync {
         let result = self.ecremove_by_id(entity.id, &TypeId::of::<T>());
         self.check_compress::<T>()?;
         result
@@ -94,22 +98,26 @@ impl Level {
     }
 
     //Component: returns the length of cmanager.storage.
-    pub fn clen<T: Any>(&self) -> usize {
+    pub fn clen<T>(&self) -> usize
+    where T: Any + Send + Sync {
         self.cmanager.len::<T>()
     }
 
     //Component: returns the capacity of cmanager.storage.
-    pub fn ccapacity<T: Any>(&self) -> usize {
+    pub fn ccapacity<T>(&self) -> usize
+    where T: Any + Send + Sync {
         self.cmanager.capacity::<T>()
     }
 
     //Component: returns the length of the packer.
-    pub fn plen<T: Any>(&self) -> usize {
+    pub fn plen<T>(&self) -> usize
+    where T: Any + Send + Sync {
         self.cmanager.plen::<T>()
     }
 
     //Component: returns the capacity of the packer.
-    pub fn pcapacity<T: Any>(&self) -> usize {
+    pub fn pcapacity<T>(&self) -> usize
+    where T: Any + Send + Sync {
         self.cmanager.pcapacity::<T>()
     }
 
@@ -118,7 +126,8 @@ impl Level {
     }
 
     //check to see if memory needs to be compressed.
-    fn check_compress<T: Any>(&mut self) -> Result<(), ErrEcs> {
+    fn check_compress<T>(&mut self) -> Result<(), ErrEcs>
+    where T: Any + Send + Sync {
         if self.ccapacity::<T>() >= Level::CAPACITY_LIMIT_TO_BEGIN_CHECKING_MEMORY {
             if (self.clen::<T>() / self.ccapacity::<T>()) as f64 <= self.compression_ratio {
                 self.compress_component_memory::<T>()?;
@@ -128,7 +137,8 @@ impl Level {
     }
 
     //compress memory of a type.
-    pub fn compress_component_memory<T: Any>(&mut self) -> Result<(), ErrEcs> {
+    pub fn compress_component_memory<T>(&mut self) -> Result<(), ErrEcs>
+    where T: Any + Send + Sync {
         Memory::compress::<T>(&mut self.cmanager, &mut self.cownership)?;
         Ok(())
     }

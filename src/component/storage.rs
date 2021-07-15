@@ -2,6 +2,7 @@ use std::vec::Vec;
 use std::any::{Any, TypeId};
 use std::any::type_name;
 use std::collections::HashMap;
+use std::marker::{Send, Sync};
 
 use crate::ErrEcs;
 
@@ -12,7 +13,7 @@ enum S {
 
 //Component storage
 pub struct Storage {
-    stored: HashMap<TypeId, Vec<Box<dyn Any>>>,
+    stored: HashMap<TypeId, Vec<Box<dyn Any + Send + Sync>>>,
 }
 
 impl Storage {
@@ -20,7 +21,8 @@ impl Storage {
             Storage { stored: HashMap::new() }
         }
 
-        pub fn swap<T: Any>(&mut self, i: usize, j: usize) {
+        pub fn swap<T>(&mut self, i: usize, j: usize)
+        where T: Any + Send + Sync {
             self.swap_by_id(&TypeId::of::<T>(), i, j);
         }
 
@@ -30,7 +32,8 @@ impl Storage {
             } else { panic!("unimplemented error handling") }
         }
 
-        pub fn capacity<T: Any>(&self) -> usize {
+        pub fn capacity<T>(&self) -> usize
+        where T: Any + Send + Sync {
             self.capacity_by_id(&TypeId::of::<T>())
         }
 
@@ -40,7 +43,8 @@ impl Storage {
             } else { panic!("unimplemented error handling") }
         }
 
-        pub fn len<T: Any>(&self) -> usize {
+        pub fn len<T>(&self) -> usize
+        where T: Any + Send + Sync {
             self.len_by_id(&TypeId::of::<T>())
         }
 
@@ -50,7 +54,8 @@ impl Storage {
             } else { panic!("unimplemented error handling") }
         }
 
-        pub fn get<T: Any>(&self, i: usize) -> Result<&T, ErrEcs> {
+        pub fn get<T>(&self, i: usize) -> Result<&T, ErrEcs>
+        where T: Any + Send + Sync {
             if let Some(vec) = self.stored.get(&TypeId::of::<T>()) {
                 if let Some(cmp) = vec[i].downcast_ref::<T>() {
                     Ok(cmp)
@@ -58,7 +63,8 @@ impl Storage {
             } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("get type: {}", type_name::<T>()))) }
         }
 
-        pub fn insert<T: Any>(&mut self, i: usize, comp: T) {
+        pub fn insert<T>(&mut self, i: usize, comp: T)
+        where T: Any + Send + Sync {
             loop {
                 if let Some(vec) = self.stored.get_mut(&TypeId::of::<T>()) {
                     if i >= vec.capacity() {
@@ -72,7 +78,8 @@ impl Storage {
             }
         }
 
-        pub fn remove<T: Any>(&mut self, i: usize) -> Result<(), ErrEcs> {
+        pub fn remove<T>(&mut self, i: usize) -> Result<(), ErrEcs>
+        where T: Any + Send + Sync {
             self.remove_by_id(&TypeId::of::<T>(), i)
         }
 
@@ -83,14 +90,16 @@ impl Storage {
             } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("remove_by_id type_id: {:#?}", type_id))) }
         }
 
-        pub fn set<T: Any>(&mut self, i: usize, comp: T) -> Result<(), ErrEcs> {
+        pub fn set<T>(&mut self, i: usize, comp: T) -> Result<(), ErrEcs>
+        where T: Any + Send + Sync {
             if let Some(vec) = self.stored.get_mut(&TypeId::of::<T>()) {
                 vec[i] = Box::new(comp);
                 Ok(())
             } else { Err(ErrEcs::StorageComponentTypeNotFound(format!("set type: {}", type_name::<T>()))) }
         }
 
-        pub fn resize<T: Any>(&mut self, new_size: usize) -> Result<(), ErrEcs> {
+        pub fn resize<T>(&mut self, new_size: usize) -> Result<(), ErrEcs>
+        where T: Any + Send + Sync {
             if let Some(vec) = self.stored.get_mut(&TypeId::of::<T>()) {
                 vec.resize_with(new_size, || {Box::new(S::Empty)});
                 vec.shrink_to_fit();

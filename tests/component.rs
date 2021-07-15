@@ -31,11 +31,11 @@ pub fn test_insert_multiple_components() {
     let entity = level.espawn();
 
     level.ecgive::<Position2d>(&entity, Position2d{x:0.0, y:0.1});
-    level.ecgive::<Position3d>(&entity, Position3d{x:0.2, y:0.3, z: 0.4});
-    let pos1 = level.ecget::<Position2d>(&entity).unwrap();
-    assert!(0.0 == pos1.x && 0.1 == pos1.y);
-    let pos2 = level.ecget::<Position3d>(&entity).unwrap();
-    assert!(0.2 == pos2.x && 0.3 == pos2.y && 0.4 == pos2.z);
+    level.ecgive::<u8>(&entity, 1u8);
+    let pos = level.ecget::<Position2d>(&entity).unwrap();
+    assert!(0.0 == pos.x && 0.1 == pos.y);
+    let num = level.ecget::<u8>(&entity).unwrap();
+    assert!(*num == 1u8);
 }
 
 #[test]
@@ -92,12 +92,12 @@ pub fn test_components_removed() {
 
     let eclone = entity.clone();
     level.ecgive::<Position2d>(&entity, Position2d{x:0.0, y:0.1});
-    level.ecgive::<Position3d>(&entity, Position3d{x:0.2, y:0.3, z: 0.4});
+    level.ecgive::<u8>(&entity, 1u8);
     level.ecfree(entity);
 
     match level.ecget::<Position2d>(&eclone) {
         Ok(_) => (),
-        Err(_) => match level.ecget::<Position3d>(&eclone) {
+        Err(_) => match level.ecget::<u8>(&eclone) {
             Ok(_) => (),
             Err(_) => panic!()
         }
