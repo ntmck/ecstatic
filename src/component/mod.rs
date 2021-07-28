@@ -214,7 +214,7 @@ impl Component {
         }
     }
 
-    //attempts to retrieve an index from freed indicies. if it finds none, it uses the provided default index. returns the index it used.
+    //attempts to retrieve an index from freed indices. if it finds none, it uses the provided default index. returns the index it used.
     fn get_index<T: Any + Send + Sync>(indices: &ALIndices, default_index: usize) -> usize {
         Component::check_initialized_index_set::<T>(PACKED, indices);
         Component::check_initialized_index_set::<T>(FREE, indices);
@@ -347,7 +347,7 @@ fn test_multi_thread_set() {
 }
 
 #[test]
-fn test_expected_indicies_on_insert() {
+fn test_expected_indices_on_insert() {
     let (storage, indices) = Component::new();
     let i = Component::insert::<u64>(32u64, &storage, &indices).unwrap();
     assert!(i == 0);
