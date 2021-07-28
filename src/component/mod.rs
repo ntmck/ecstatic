@@ -40,7 +40,6 @@ impl Component {
         Component::check_initialized_component_vector::<T>(storage);
         let len = Component::len::<T>(storage).unwrap();
         let i = Component::get_index::<T>(indices, len);
-        print!("lenp1: {}, i: {}\n", len, i);
         match storage.read() {
             Ok(map) => {
                 match map.get(&TypeId::of::<T>()) {
@@ -215,7 +214,7 @@ impl Component {
         }
     }
 
-    //inserts an index into free or defaults to given index. attempts to take from the free indices first. returns a free index or default.
+    //attempts to retrieve an index from freed indicies. if it finds none, it uses the provided default index. returns the index it used.
     fn get_index<T: Any + Send + Sync>(indices: &ALIndices, default_index: usize) -> usize {
         Component::check_initialized_index_set::<T>(PACKED, indices);
         Component::check_initialized_index_set::<T>(FREE, indices);
@@ -226,7 +225,7 @@ impl Component {
             .get(&TypeId::of::<T>()).unwrap()
             .write().unwrap()
             .first() {
-                Some(first) => {index = *first; print!("Hey we hit first!")},
+                Some(first) => index = *first,
                 None => index = default_index,
             }
 
@@ -244,7 +243,6 @@ impl Component {
     fn free_index<T: Any + Send + Sync>(i: usize, indices: &ALIndices) {
         Component::check_initialized_index_set::<T>(PACKED, indices);
         Component::check_initialized_index_set::<T>(FREE, indices);
-        print!("Freeing: {}\n", i);
         let removed = indices
             .read().unwrap()
             .get(PACKED).unwrap()
