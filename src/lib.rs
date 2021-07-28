@@ -18,44 +18,25 @@ For more details see: <http://www.gnu.org/licenses/>.
 
 */
 
-#![feature(map_first_last)]
+#![feature(map_first_last)] //for BTreeSet
 
 pub mod entity;
 pub mod component;
-pub mod system;
 pub mod data;
 pub mod level;
 
-use level::*;
-pub use data::*;
+//use level::*;
+//pub use data::*;
 
 pub struct Ecs;
 
 impl Ecs {
-    pub fn new_level() -> Level {
-        //Default compression ratio: 0.2 in which 80% of capacity is unused.
-        Level::new(0.2f64)
-    }
 }
 
 #[derive(Debug)]
 pub enum ErrEcs {
-    StorageComponentTypeNotFound(String),
-    StorageComponentNotFound(String),
-
-    PackerUnpackIndexOutOfBounds(String),
-
-    CManagerComponentAlreadyExistsForEntity(String),
-    CManagerTypeNotFound(String),
-
-    COwnershipEntityNotFound(String),
-    COwnershipComponentNotFound(String),
-
-    EManagerOwnerAuthNotFound(String),
-    EManagerActiveEntityNotFound(String),
-    EManagerWrongIdForToken(String),
-
-    LevelStorageCapacityLessThanOrEqualToZero(String),
-
-    UnimplementedErrorType(String),
+    ComponentLock(String),
+    ComponentMapNone(String),
+    ComponentValueNone(String),
+    ComponentDowncast(String),
 }
