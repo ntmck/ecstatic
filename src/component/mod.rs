@@ -3,8 +3,6 @@ use std::any::type_name;
 use std::marker::{Send, Sync};
 use std::sync::{Arc, RwLock, Barrier};
 use std::collections::{HashMap, BTreeSet};
-
-//multi-thread testing
 use std::thread;
 use std::sync::mpsc::channel;
 
@@ -330,7 +328,7 @@ fn test_multi_thread_set() {
     for set_value in 0..5 {
         let location = location.clone();
         let storage = storage.clone();
-        let i = i.clone();
+        let set_value = set_value.clone();
         let gate = gate.clone();
 
         handles.push(thread::spawn(move|| {
@@ -342,7 +340,7 @@ fn test_multi_thread_set() {
         handle.join().unwrap();
     }
 
-    let v = Component::get::<u64>(loc, &storage).unwrap();
+    let v = Component::get::<u64>(location, &storage).unwrap();
     assert!(v == 4 || v == 3 || v == 2 || v == 1 || v == 0); //will change depending on thread execution order due to the thread gate.
 }
 
