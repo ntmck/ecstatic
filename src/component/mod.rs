@@ -8,14 +8,14 @@ use std::sync::mpsc::channel;
 
 use crate::ErrEcs;
 
-//Arc-RwLock Component
-pub type ALComponent = Arc<RwLock<Box<dyn Any + Send + Sync>>>;
+//RwLock Component
+pub type LComponent = RwLock<Box<dyn Any + Send + Sync>>;
 
-//Arc-RwLock Component store
-pub type ALComponentStore = Arc<RwLock<Vec<ALComponent>>>;
+//RwLock Component store
+pub type LComponentStore = RwLock<Vec<LComponent>>;
 
 //Arc-RwLock Component Storage {Arc<RwLock<HashMap<TypeId, Arc<RwLock<Vec<Arc<RwLock<Box<dyn Any + Send + Sync>>>>>>>>>}
-pub type ALComponentStorage = Arc<RwLock<HashMap<TypeId, ALComponentStore>>>;
+pub type ALComponentStorage = Arc<RwLock<HashMap<TypeId, LComponentStore>>>;
 
 //Arc-RwLock index storage. Used for both indices indices and freed indices. [0] = indices, [1] = free
 const PACKED: usize = 0;
@@ -45,9 +45,9 @@ impl Component {
                         match lvec.write() {
                             Ok(mut vec) => {
                                 if i == len {
-                                    vec.push(Arc::new(RwLock::new(Box::new(component))));
+                                    vec.push(RwLock::new(Box::new(component)));
                                 } else {
-                                    vec[i] = Arc::new(RwLock::new(Box::new(component)));
+                                    vec[i] = RwLock::new(Box::new(component));
                                 }
                             },
                             Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::insert || Error acquiring vector lock. {:#?}\n", e)))
@@ -94,6 +94,7 @@ impl Component {
     }
 
     //gets the component at given index. NOTE: This works for now, but it required an additional + Copy trait...
+    //TODO: Consider just returning the locked value.
     pub fn get<T: Any + Send + Sync + Copy>(i: usize, storage: &ALComponentStorage) -> Result<T, ErrEcs> {
         Component::check_initialized_component_vector::<T>(storage);
         if !Component::is_empty::<T>(i, storage)? {
@@ -274,7 +275,7 @@ impl Component {
     fn initialize_storage_vector<T: Any + Send + Sync>(storage: &ALComponentStorage) {
         storage
             .write().unwrap()
-            .insert(TypeId::of::<T>(), Arc::new(RwLock::new(vec![])));
+            .insert(TypeId::of::<T>(), RwLock::new(vec![]));
     }
 
     fn check_initialized_index_set<T: Any + Send + Sync>(which: usize, indices: &ALIndices) {

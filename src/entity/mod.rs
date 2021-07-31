@@ -3,22 +3,53 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::hash::{Hash, Hasher};
 use std::collections::HashSet;
 use std::any::TypeId;
+use std::sync::{Arc, RwLock};
+
+//Arc-RwLock Entity
+pub type ALEntity = Arc<RwLock<Entity>>;
 
 pub struct Entity {
     pub id: u64,
-    pub components: HashSet<TypeId>,
+    pub components: RwLock<HashSet<TypeId>>,
 }
 
 impl Entity {
-    pub fn create() -> Entity {
-        Entity {
+    pub fn new() -> ALEntity {
+        let e = Entity {
             id: Entity::make_token(),
-            components: HashSet::new(),
-        }
+            components: RwLock::new(HashSet::new()),
+        };
+        Arc::new(RwLock::new(e))
     }
 
-    pub fn has_component(entity: &Entity, component_id: &TypeId) -> bool {
-        entity.components.contains(component_id)
+    pub fn insert_component(entity: &ALEntity, component_id: TypeId) {
+        entity
+            .read()
+            .unwrap()
+            .components
+            .write()
+            .unwrap()
+            .insert(component_id);
+    }
+
+    pub fn remove_component(entity: &ALEntity, component_id: &TypeId) {
+        entity
+            .read()
+            .unwrap()
+            .components
+            .write()
+            .unwrap()
+            .remove(component_id);
+    }
+
+    pub fn has_component(entity: &ALEntity, component_id: &TypeId) -> bool {
+        entity
+            .read()
+            .unwrap()
+            .components
+            .read()
+            .unwrap()
+            .contains(component_id)
     }
 
     fn make_token() -> u64 {
