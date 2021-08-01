@@ -39,4 +39,8 @@ pub enum ErrEcs {
     ComponentMapNone(String),
     ComponentValueNone(String),
     ComponentDowncast(String),
+
+    EntityComponentNone(String),
+
+    LevelComponentInsert(String),
 }

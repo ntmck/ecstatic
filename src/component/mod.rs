@@ -1,8 +1,11 @@
 use std::any::{Any, TypeId};
 use std::any::type_name;
 use std::marker::{Send, Sync};
-use std::sync::{Arc, RwLock, Barrier};
 use std::collections::{HashMap, BTreeSet};
+use std::sync::{Arc, RwLock};
+
+//ignore these warnings as they are relevant for testing.
+use std::sync::Barrier;
 use std::thread;
 use std::sync::mpsc::channel;
 
@@ -50,13 +53,13 @@ impl Component {
                                     vec[i] = RwLock::new(Box::new(component));
                                 }
                             },
-                            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::insert || Error acquiring vector lock. {:#?}\n", e)))
+                            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::insert || Error acquiring vector lock. {:#?}", e)))
                         }
                     },
-                    None => return Err(ErrEcs::ComponentMapNone(format!("Component::insert || Component map is None.\n")))
+                    None => return Err(ErrEcs::ComponentMapNone(format!("Component::insert || Component map is None.")))
                 }
             },
-            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::insert || Error acquiring storage lock. {:#?}\n", e)))
+            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::insert || Error acquiring storage lock. {:#?}", e)))
         }
         Ok(i)
     }
@@ -77,19 +80,19 @@ impl Component {
                                                 *value = Box::new(component);
                                                 Ok(())
                                             },
-                                            Err(e) =>  Err(ErrEcs::ComponentLock(format!("Component::set || Error acquiring value lock. {:#?}\n", e)))
+                                            Err(e) =>  Err(ErrEcs::ComponentLock(format!("Component::set || Error acquiring value lock. {:#?}", e)))
                                         }
                                     },
-                                    None => Err(ErrEcs::ComponentValueNone(format!("Component::set || Value in vector is None.\n")))
+                                    None => Err(ErrEcs::ComponentValueNone(format!("Component::set || Value in vector is None.")))
                                 }
                             },
-                            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::set || Error acquiring vector lock. {:#?}\n", e)))
+                            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::set || Error acquiring vector lock. {:#?}", e)))
                         }
                     },
-                    None => Err(ErrEcs::ComponentMapNone(format!("Component::set || Component map is None.\n")))
+                    None => Err(ErrEcs::ComponentMapNone(format!("Component::set || Component map is None.")))
                 }
             },
-            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::set || Error acquiring storage lock. {:#?}\n", e)))
+            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::set || Error acquiring storage lock. {:#?}", e)))
         }
     }
 
@@ -109,21 +112,21 @@ impl Component {
                                             match lvalue.read() {
                                                 Ok(value) => match value.downcast_ref::<T>() {
                                                     Some(value) => Ok(*value),
-                                                    None => Err(ErrEcs::ComponentDowncast(format!("Component::get || Failed to downcast to type: {:#?}\n", type_name::<T>())))
+                                                    None => Err(ErrEcs::ComponentDowncast(format!("Component::get || Failed to downcast to type: {:#?}", type_name::<T>())))
                                                 },
-                                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::get || Error acquiring value lock. {:#?}\n", e)))
+                                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::get || Error acquiring value lock. {:#?}", e)))
                                             }
                                         },
-                                        None => Err(ErrEcs::ComponentValueNone(format!("Component::get || Value in vector is None.\n")))
+                                        None => Err(ErrEcs::ComponentValueNone(format!("Component::get || Value in vector is None.")))
                                     }
                                 },
-                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::get || Error acquiring vector lock. {:#?}\n", e)))
+                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::get || Error acquiring vector lock. {:#?}", e)))
                             }
                         },
-                        None => Err(ErrEcs::ComponentMapNone(format!("Component::get || Component map is None.\n")))
+                        None => Err(ErrEcs::ComponentMapNone(format!("Component::get || Component map is None.")))
                     }
                 },
-                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::get || Error acquiring storage lock. {:#?}\n", e)))
+                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::get || Error acquiring storage lock. {:#?}", e)))
             }
         } else { panic!("unimplemented error handling on empty.") }
     }
@@ -143,19 +146,19 @@ impl Component {
                                             Ok(mut value) => {
                                                 *value = Box::new(Empty::Empty);
                                             },
-                                            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::empty || Error acquiring value lock. {:#?}\n", e)))
+                                            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::empty || Error acquiring value lock. {:#?}", e)))
                                         }
                                     },
-                                    None => return Err(ErrEcs::ComponentValueNone(format!("Component::empty || Value in vector is None.\n")))
+                                    None => return Err(ErrEcs::ComponentValueNone(format!("Component::empty || Value in vector is None.")))
                                 }
                             },
-                            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::empty || Error acquiring vector lock. {:#?}\n", e)))
+                            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::empty || Error acquiring vector lock. {:#?}", e)))
                         }
                     },
-                    None => return Err(ErrEcs::ComponentMapNone(format!("Component::empty || Component map is None.\n")))
+                    None => return Err(ErrEcs::ComponentMapNone(format!("Component::empty || Component map is None.")))
                 }
             },
-            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::empty || Error acquiring storage lock. {:#?}\n", e)))
+            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::empty || Error acquiring storage lock. {:#?}", e)))
         }
         Component::free_index::<T>(i, indices);
         Ok(())
@@ -171,13 +174,13 @@ impl Component {
                             Ok(vec) => {
                                 Ok(vec.len())
                             },
-                            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::len || Error acquiring vector lock. {:#?}\n", e)))
+                            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::len || Error acquiring vector lock. {:#?}", e)))
                         }
                     },
-                    None => Err(ErrEcs::ComponentMapNone(format!("Component::len || Component map is None.\n")))
+                    None => Err(ErrEcs::ComponentMapNone(format!("Component::len || Component map is None.")))
                 }
             },
-            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::len || Error acquiring storage lock. {:#?}\n", e)))
+            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::len || Error acquiring storage lock. {:#?}", e)))
         }
     }
 
@@ -197,19 +200,19 @@ impl Component {
                                                 Some(_) => Ok(true),
                                                 None => Ok(false)
                                             },
-                                            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::is_empty || Error acquiring value lock. {:#?}\n", e)))
+                                            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::is_empty || Error acquiring value lock. {:#?}", e)))
                                         }
                                     },
-                                    None => Err(ErrEcs::ComponentValueNone(format!("Component::is_empty || Value in vector is None.\n")))
+                                    None => Err(ErrEcs::ComponentValueNone(format!("Component::is_empty || Value in vector is None.")))
                                 }
                             },
-                            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::is_empty || Error acquiring vector lock. {:#?}\n", e)))
+                            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::is_empty || Error acquiring vector lock. {:#?}", e)))
                         }
                     },
-                    None => Err(ErrEcs::ComponentMapNone(format!("Component::is_empty || Component map is None.\n")))
+                    None => Err(ErrEcs::ComponentMapNone(format!("Component::is_empty || Component map is None.")))
                 }
             },
-            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::is_empty || Error acquiring storage lock. {:#?}\n", e)))
+            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::is_empty || Error acquiring storage lock. {:#?}", e)))
         }
     }
 
