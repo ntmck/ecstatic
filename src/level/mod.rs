@@ -28,11 +28,21 @@ impl Level {
         }
     }
 
-    pub fn ecget<T: Any + Send + Sync + Copy>(&self, entity: &ALEntity) -> Result<T, ErrEcs> {
+    pub fn ecread<T: Any + Send + Sync + Copy>(&self, entity: &ALEntity) -> Result<T, ErrEcs> {
         match Entity::get_component_index(entity, &TypeId::of::<T>()) {
             Ok(i) => {
-                let component = Component::get::<T>(i, &self.components)?;
+                let component = Component::read::<T>(i, &self.components)?;
                 Ok(component)
+            },
+            Err(e) => Err(ErrEcs::LevelComponentInsert(format!("Level could not get component type: {} from entity {} for reason: {:#?}\n", type_name::<T>(), entity.read().unwrap().id, e))),
+        }
+    }
+
+    pub fn ecmodify<T: Any + Send + Sync>(&self, entity: &ALEntity, modify: Modify) -> Result<(), ErrEcs> {
+        match Entity::get_component_index(entity, &TypeId::of::<T>()) {
+            Ok(i) => {
+                Component::modify::<T>(i, &self.components, modify)?;
+                Ok(())
             },
             Err(e) => Err(ErrEcs::LevelComponentInsert(format!("Level could not get component type: {} from entity {} for reason: {:#?}\n", type_name::<T>(), entity.read().unwrap().id, e))),
         }
@@ -40,8 +50,17 @@ impl Level {
 }
 
 #[test]
-fn test_new() {
+fn test_ecget_modify() {
     let level = Level::new();
+    let entity = Entity::new();
+    level.ecinsert::<u64>(&entity, 0u64);
+    let previous = level.ecread::<u64>(&entity).unwrap();
+    level.ecmodify::<u64>(&entity, |component| {
+        let mut c = *component.write().unwrap().downcast_ref::<u64>().unwrap(); 
+        c += 1;
+    });
+    let after = level.ecread::<u64>(&entity).unwrap();
+    assert!(previous == after, "previous: {}, after: {}", previous, after);
 }
 
 #[test]
@@ -50,19 +69,19 @@ fn test_ecget_component_for_entity() {
     let entity = Entity::new();
     level.ecinsert::<u64>(&entity, 1u64);
     assert!(Entity::has_component(&entity, &TypeId::of::<u64>()));
-    let value = level.ecget::<u64>(&entity).unwrap();
+    let value = level.ecread::<u64>(&entity).unwrap();
     assert!(value == 1u64, "actual: {}", value);
 
     let entity2 = Entity::new();
     level.ecinsert::<u64>(&entity2, 2u64);
     assert!(Entity::has_component(&entity2, &TypeId::of::<u64>()));
-    let value = level.ecget::<u64>(&entity2).unwrap();
+    let value = level.ecread::<u64>(&entity2).unwrap();
     assert!(value == 2u64, "actual: {}", value);
 
     level.ecinsert::<usize>(&entity, 23 as usize);
     assert!(Entity::has_component(&entity, &TypeId::of::<usize>()));
     assert!(!Entity::has_component(&entity2, &TypeId::of::<usize>()));
-    let value = level.ecget::<usize>(&entity).unwrap();
+    let value = level.ecread::<usize>(&entity).unwrap();
     assert!(value == 23 as usize, "actual: {}", value);
 }
 
@@ -71,15 +90,15 @@ fn test_ecget_component_for_entity() {
 fn test_none_ecget() {
     let level = Level::new();
     let entity = Entity::new();
-    let value = level.ecget::<u64>(&entity).unwrap();
+    let value = level.ecread::<u64>(&entity).unwrap();
 }
 
 #[test]
 fn test_ecinsert_two_of_same_component_into_same_entity() {
     let level = Level::new();
-    let mut entity = Entity::new();
+    let entity = Entity::new();
     level.ecinsert::<u64>(&entity, 1u64);
     level.ecinsert::<u64>(&entity, 2u64);
-    let value = level.ecget::<u64>(&entity).unwrap();
+    let value = level.ecread::<u64>(&entity).unwrap();
     assert!(value == 1u64, "actual: {}", value);
 }

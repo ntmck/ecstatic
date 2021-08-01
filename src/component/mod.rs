@@ -25,6 +25,9 @@ const PACKED: usize = 0;
 const FREE: usize = 1;
 pub type ALIndices = Arc<RwLock<[HashMap<TypeId, RwLock<BTreeSet<usize>>>; 2]>>;
 
+//Required to downcast_ref after obtaining the lock.
+pub type Modify = fn(&LComponent);
+
 //An empty type for emptying component memory.
 enum Empty { Empty }
 
@@ -96,9 +99,37 @@ impl Component {
         }
     }
 
-    //gets the component at given index. NOTE: This works for now, but it required an additional + Copy trait...
-    //TODO: Consider just returning the locked value.
-    pub fn get<T: Any + Send + Sync + Copy>(i: usize, storage: &ALComponentStorage) -> Result<T, ErrEcs> {
+    //modifies the component using the provided function.
+    pub fn modify<T: Any + Send + Sync>(i: usize, storage: &ALComponentStorage, modify: Modify) -> Result<(), ErrEcs> {
+        Component::check_initialized_component_vector::<T>(storage);
+        if !Component::is_empty::<T>(i, storage)? {
+            match storage.read() {
+                Ok(map) => {
+                    match map.get(&TypeId::of::<T>()) {
+                        Some(lvec) => {
+                            match lvec.read() {
+                                Ok(vec) => {
+                                    match vec.get(i) {
+                                        Some(lvalue) => {
+                                            modify(lvalue);
+                                            Ok(())
+                                        },
+                                        None => Err(ErrEcs::ComponentValueNone(format!("Component::modify || Value in vector is None.")))
+                                    }
+                                },
+                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::modify || Error acquiring vector lock. {:#?}", e)))
+                            }
+                        },
+                        None => Err(ErrEcs::ComponentMapNone(format!("Component::modify || Component map is None.")))
+                    }
+                },
+                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::modify || Error acquiring storage lock. {:#?}", e)))
+            }
+        } else { panic!("unimplemented error handling on empty.") }
+    }
+
+    //reads the component at given index. NOTE: This works for now, but it required an additional + Copy trait...
+    pub fn read<T: Any + Send + Sync + Copy>(i: usize, storage: &ALComponentStorage) -> Result<T, ErrEcs> {
         Component::check_initialized_component_vector::<T>(storage);
         if !Component::is_empty::<T>(i, storage)? {
             match storage.read() {
@@ -112,21 +143,21 @@ impl Component {
                                             match lvalue.read() {
                                                 Ok(value) => match value.downcast_ref::<T>() {
                                                     Some(value) => Ok(*value),
-                                                    None => Err(ErrEcs::ComponentDowncast(format!("Component::get || Failed to downcast to type: {:#?}", type_name::<T>())))
+                                                    None => Err(ErrEcs::ComponentDowncast(format!("Component::read || Failed to downcast to type: {:#?}", type_name::<T>())))
                                                 },
-                                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::get || Error acquiring value lock. {:#?}", e)))
+                                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::read || Error acquiring value lock. {:#?}", e)))
                                             }
                                         },
-                                        None => Err(ErrEcs::ComponentValueNone(format!("Component::get || Value in vector is None.")))
+                                        None => Err(ErrEcs::ComponentValueNone(format!("Component::read || Value in vector is None.")))
                                     }
                                 },
-                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::get || Error acquiring vector lock. {:#?}", e)))
+                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::read || Error acquiring vector lock. {:#?}", e)))
                             }
                         },
-                        None => Err(ErrEcs::ComponentMapNone(format!("Component::get || Component map is None.")))
+                        None => Err(ErrEcs::ComponentMapNone(format!("Component::read || Component map is None.")))
                     }
                 },
-                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::get || Error acquiring storage lock. {:#?}", e)))
+                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::read || Error acquiring storage lock. {:#?}", e)))
             }
         } else { panic!("unimplemented error handling on empty.") }
     }
@@ -313,7 +344,7 @@ fn test_multi_thread_get() {
         let loc = loc.clone();
         let storage = storage.clone();
         thread::spawn(move|| {
-            tx.send(Component::get::<u64>(loc, &storage).unwrap()).unwrap();
+            tx.send(Component::read::<u64>(loc, &storage).unwrap()).unwrap();
         });
     }
     for _ in 0..5 {
@@ -344,7 +375,7 @@ fn test_multi_thread_set() {
         handle.join().unwrap();
     }
 
-    let v = Component::get::<u64>(location, &storage).unwrap();
+    let v = Component::read::<u64>(location, &storage).unwrap();
     assert!(v == 4 || v == 3 || v == 2 || v == 1 || v == 0); //will change depending on thread execution order due to the thread gate.
 }
 
@@ -383,7 +414,7 @@ fn test_is_empty() {
 #[should_panic]
 fn test_get() {
     let (storage, indices) = Component::new();
-    match Component::get::<u64>(0, &storage) {
+    match Component::read::<u64>(0, &storage) {
         Ok(_) => (),
         Err(_) => panic!()
     }
@@ -423,7 +454,7 @@ fn test_insert_get() {
     let (storage, indices) = Component::new();
     let input: u64 = 32;
     let i = Component::insert::<u64>(input, &storage, &indices).unwrap();
-    let output = Component::get::<u64>(i, &storage).unwrap();
+    let output = Component::read::<u64>(i, &storage).unwrap();
     assert!(input == output, "input: {}, output: {:#?}", input, output);
 }
 
@@ -434,7 +465,7 @@ fn test_insert_multiple_get_multiple() {
         Component::insert::<usize>(i, &storage, &indices);
     }
     for i in 0..100 {
-        let output = Component::get::<usize>(i, &storage).unwrap();
+        let output = Component::read::<usize>(i, &storage).unwrap();
         assert!(i == output, "i: {}, output: {:#?}", i, output);
     }
 }
@@ -444,8 +475,8 @@ fn test_insert_different_get_different() {
     let (storage, indices) = Component::new();
     let i = Component::insert::<u64>(32u64, &storage, &indices).unwrap();
     let i2 = Component::insert::<bool>(true, &storage, &indices).unwrap();
-    assert!(Component::get::<bool>(i2, &storage).unwrap());
-    assert!(Component::get::<u64>(i, &storage).unwrap() == 32)
+    assert!(Component::read::<bool>(i2, &storage).unwrap());
+    assert!(Component::read::<u64>(i, &storage).unwrap() == 32)
 }
 
 #[test]
@@ -462,7 +493,7 @@ fn test_insert_remove_insert() {
     match Component::empty::<u64>(i, &storage, &indices) {
         Ok(_) => {
             let i = Component::insert::<u64>(31u64, &storage, &indices).unwrap();
-            assert!(Component::get::<u64>(i, &storage).unwrap() == 31u64);
+            assert!(Component::read::<u64>(i, &storage).unwrap() == 31u64);
         },
         Err(_) => panic!()
     }
@@ -473,7 +504,7 @@ fn test_insert_set() {
     let (storage, indices) = Component::new();
     let i = Component::insert::<u64>(32u64, &storage, &indices).unwrap();
     match Component::set::<u64>(i, 100u64, &storage) {
-        Ok(_) => assert!(Component::get::<u64>(i, &storage).unwrap() == 100u64),
+        Ok(_) => assert!(Component::read::<u64>(i, &storage).unwrap() == 100u64),
         Err(_) => panic!()
     }
 }
@@ -486,7 +517,7 @@ fn test_insert_empty_insert_set() {
         Ok(_) => {
             let i = Component::insert::<u64>(31u64, &storage, &indices).unwrap();
             match Component::set::<u64>(i, 30u64, &storage) {
-                Ok(_) => assert!(Component::get::<u64>(i, &storage).unwrap() == 30u64),
+                Ok(_) => assert!(Component::read::<u64>(i, &storage).unwrap() == 30u64),
                 Err(_) => panic!()
             }
         },
