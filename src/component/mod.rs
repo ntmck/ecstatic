@@ -26,7 +26,7 @@ const FREE: usize = 1;
 pub type ALIndices = Arc<RwLock<[HashMap<TypeId, RwLock<BTreeSet<usize>>>; 2]>>;
 
 //Required to downcast_ref after obtaining the lock.
-pub type Modify = fn(&LComponent);
+pub type Modify<T> = fn(&mut T);
 
 //An empty type for emptying component memory.
 enum Empty { Empty }
@@ -100,7 +100,7 @@ impl Component {
     }
 
     //modifies the component using the provided function.
-    pub fn modify<T: Any + Send + Sync>(i: usize, storage: &ALComponentStorage, modify: Modify) -> Result<(), ErrEcs> {
+    pub fn modify<T: Any + Send + Sync>(i: usize, storage: &ALComponentStorage, modify: Modify<T>) -> Result<(), ErrEcs> {
         Component::check_initialized_component_vector::<T>(storage);
         if !Component::is_empty::<T>(i, storage)? {
             match storage.read() {
@@ -111,8 +111,16 @@ impl Component {
                                 Ok(vec) => {
                                     match vec.get(i) {
                                         Some(lvalue) => {
-                                            modify(lvalue);
-                                            Ok(())
+                                            match lvalue.write() {
+                                                Ok(mut value) => match value.downcast_mut::<T>() {
+                                                    Some(mut value) => {
+                                                        modify(value);
+                                                        Ok(())
+                                                    },
+                                                    None => Err(ErrEcs::ComponentDowncast(format!("Component::modify || Failed to mutably downcast to type: {:#?}", type_name::<T>())))
+                                                },
+                                                Err(e) =>  Err(ErrEcs::ComponentLock(format!("Component::modify || Error acquiring value lock. {:#?}", e)))
+                                            }
                                         },
                                         None => Err(ErrEcs::ComponentValueNone(format!("Component::modify || Value in vector is None.")))
                                     }

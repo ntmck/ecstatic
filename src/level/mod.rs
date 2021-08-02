@@ -38,7 +38,7 @@ impl Level {
         }
     }
 
-    pub fn ecmodify<T: Any + Send + Sync>(&self, entity: &ALEntity, modify: Modify) -> Result<(), ErrEcs> {
+    pub fn ecmodify<T: Any + Send + Sync>(&self, entity: &ALEntity, modify: Modify<T>) -> Result<(), ErrEcs> {
         match Entity::get_component_index(entity, &TypeId::of::<T>()) {
             Ok(i) => {
                 Component::modify::<T>(i, &self.components, modify)?;
@@ -56,13 +56,10 @@ fn test_ecget_modify() {
     level.ecinsert::<u64>(&entity, 0u64);
     let previous = level.ecread::<u64>(&entity).unwrap();
     level.ecmodify::<u64>(&entity, |component| {
-        //Can only pass the lock so this line is more or less always required in this scope. At least until a new solution is found.
-        let mut c = *component.write().unwrap().downcast_ref::<u64>().unwrap();
-        //After locking and downcasting, the value can be modified freely.
-        c += 1;
+        *component += 1;
     });
     let after = level.ecread::<u64>(&entity).unwrap();
-    assert!(previous == after, "previous: {}, after: {}", previous, after);
+    assert!(previous == 0 && after == 1, "previous: {}, after: {}", previous, after);
 }
 
 #[test]
