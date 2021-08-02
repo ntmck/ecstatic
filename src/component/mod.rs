@@ -133,7 +133,7 @@ impl Component {
                 },
                 Err(e) => Err(ErrEcs::ComponentLock(format!("Component::modify || Error acquiring storage lock. {:#?}", e)))
             }
-        } else { panic!("unimplemented error handling on empty.") }
+        } else { Err(ErrEcs::ComponentEmpty(format!("Component::modify || Empty component: {:#?}", type_name::<T>()))) }
     }
 
     //reads the component at given index. NOTE: This works for now, but it required an additional + Copy trait...
@@ -167,7 +167,7 @@ impl Component {
                 },
                 Err(e) => Err(ErrEcs::ComponentLock(format!("Component::read || Error acquiring storage lock. {:#?}", e)))
             }
-        } else { panic!("unimplemented error handling on empty.") }
+        } else { Err(ErrEcs::ComponentEmpty(format!("Component::modify || Empty component: {:#?}", type_name::<T>()))) }
     }
 
     //Empties, but doesn't deallocate, memory at index for a component type.
