@@ -56,7 +56,9 @@ fn test_ecget_modify() {
     level.ecinsert::<u64>(&entity, 0u64);
     let previous = level.ecread::<u64>(&entity).unwrap();
     level.ecmodify::<u64>(&entity, |component| {
-        let mut c = *component.write().unwrap().downcast_ref::<u64>().unwrap(); 
+        //Can only pass the lock so this line is more or less always required in this scope. At least until a new solution is found.
+        let mut c = *component.write().unwrap().downcast_ref::<u64>().unwrap();
+        //After locking and downcasting, the value can be modified freely.
         c += 1;
     });
     let after = level.ecread::<u64>(&entity).unwrap();
