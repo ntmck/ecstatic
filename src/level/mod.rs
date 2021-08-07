@@ -18,7 +18,9 @@ impl Level {
         }
     }
 
-    pub fn ecinsert<T: Any + Send + Sync>(&self, entity: &ALEntity, component: T) -> Result<(), ErrEcs> {
+    pub fn ecinsert<T>(&self, entity: &ALEntity, component: T) -> Result<(), ErrEcs>
+    where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
         match Component::insert::<T>(component, &self.components, &self.indices) {
             Ok(i) => {
                 Entity::insert_component::<T>(entity, i);
@@ -28,36 +30,55 @@ impl Level {
         }
     }
 
-    pub fn ecread<T: Any + Send + Sync + Copy>(&self, entity: &ALEntity) -> Result<T, ErrEcs> {
+    pub fn ecread<T>(&self, entity: &ALEntity) -> Result<T, ErrEcs>
+    where T: Any + Send + Sync + Copy + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
         match Entity::get_component_index::<T>(entity) {
-            Ok(i) => {
-                let component = Component::read::<T>(i, &self.components)?;
-                Ok(component)
-            },
-            Err(e) => Err(ErrEcs::LevelComponentInsert(format!("Level could not get component type: {} from entity {} for reason: {:#?}\n", type_name::<T>(), entity.read().unwrap().id, e))),
+            Ok(i) => Component::read::<T>(i, &self.components),
+            Err(e) => Err(ErrEcs::LevelGetComponentIndex(format!("Level could not get component type: {} from entity {} for reason: {:#?}\n", type_name::<T>(), entity.read().unwrap().id, e))),
         }
     }
 
-    pub fn ecmodify<T: Any + Send + Sync>(&self, entity: &ALEntity, modify: Modify<T>) -> Result<(), ErrEcs> {
+    pub fn ecmodify<T>(&self, entity: &ALEntity, modify: Modify<T>) -> Result<(), ErrEcs>
+    where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
+        match Entity::get_component_index::<T>(entity) {
+            Ok(i) => Component::modify::<T>(i, &self.components, modify),
+            Err(e) => Err(ErrEcs::LevelGetComponentIndex(format!("Level could not get component type: {} from entity {} for reason: {:#?}\n", type_name::<T>(), entity.read().unwrap().id, e))),
+        }
+    }
+
+    pub fn ecempty<T>(&self, entity: &ALEntity) -> Result<(), ErrEcs>
+    where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
         match Entity::get_component_index::<T>(entity) {
             Ok(i) => {
-                Component::modify::<T>(i, &self.components, modify)?;
+                Entity::remove_component::<T>(entity);
+                Component::empty::<T>(i, &self.components, &self.indices)?;
                 Ok(())
             },
-            Err(e) => Err(ErrEcs::LevelComponentInsert(format!("Level could not get component type: {} from entity {} for reason: {:#?}\n", type_name::<T>(), entity.read().unwrap().id, e))),
+            Err(e) => Err(ErrEcs::LevelGetComponentIndex(format!("Level could not get component type: {} from entity {} for reason: {:#?}\n", type_name::<T>(), entity.read().unwrap().id, e))),
         }
+    }
+
+    pub fn component_len<T>(&self) -> usize
+    where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
+        Component::len::<T>(&self.components).unwrap_or(0)
     }
 }
 
-/*#[test]
+#[test]
 fn test_ecremove() {
     let level = Level::new();
     let entity = Entity::new();
     level.ecinsert::<u64>(&entity, 0u64);
     assert!(Entity::has_component::<u64>(&entity));
-    level.ecremove::<u64>(&entity);
+    assert!(level.component_len::<u64>() == 1);
+    level.ecempty::<u64>(&entity);
     assert!(!Entity::has_component::<u64>(&entity));
-}*/
+    assert!(level.component_len::<u64>() == 0);
+}
 
 #[test]
 fn test_ecget_modify() {

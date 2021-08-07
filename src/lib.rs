@@ -35,13 +35,16 @@ impl Ecs {
 
 #[derive(Debug)]
 pub enum ErrEcs {
-    ComponentLock(String),
-    ComponentMapNone(String),
-    ComponentValueNone(String),
-    ComponentDowncast(String),
+    ComponentInsert(String),
+    ComponentSet(String),
+    ComponentModify(String),
     ComponentEmpty(String),
+    ComponentRead(String),
 
     EntityComponentNone(String),
 
     LevelComponentInsert(String),
+    LevelGetComponentIndex(String),
+
+    UnknownError,
 }

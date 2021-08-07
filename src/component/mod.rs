@@ -3,6 +3,7 @@ use std::any::type_name;
 use std::marker::{Send, Sync};
 use std::collections::{HashMap, BTreeSet};
 use std::sync::{Arc, RwLock};
+use std::panic;
 
 //ignore these warnings as they are relevant for testing.
 use std::sync::Barrier;
@@ -33,6 +34,13 @@ enum Empty { Empty }
 
 pub struct Component;
 impl Component {
+    const STORAGE_LOCK_ERROR_MSG: &'static str = "Failed to acquire storage lock.";
+    const TYPE_NOT_FOUND_ERROR_MSG: &'static str = "Failed to find component of type:";
+    const VECTOR_LOCK_ERROR_MSG: &'static str = "Failed to acquire vector lock.";
+    const INDEX_OUT_OF_BOUNDS_ERROR_MSG: &'static str = "Index out of bounds for index and type ->";
+    const ELEMENT_LOCK_ERROR_MSG: &'static str = "Failed to acquire element lock.";
+    const DOWNCAST_ERROR_MSG: &'static str = "Failed to downcast value for type ->";
+
     pub fn new() -> (ALComponentStorage, ALIndices) {
         let storage = Arc::new(RwLock::new(HashMap::new()));
         let indices = Arc::new(RwLock::new([HashMap::new(), HashMap::new()]));
@@ -40,140 +48,99 @@ impl Component {
     }
 
     //inserts a component into storage by type and returns the index it was inserted into.
-    pub fn insert<T: Any + Send + Sync>(component: T, storage: &ALComponentStorage, indices: &ALIndices) -> Result<usize, ErrEcs> {
+    pub fn insert<T>(component: T, storage: &ALComponentStorage, indices: &ALIndices) -> Result<usize, ErrEcs>
+    where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
         Component::check_initialized_component_vector::<T>(storage);
-        let len = Component::len::<T>(storage).unwrap();
+        let len = Component::len::<T>(storage).unwrap(); //TODO: this will need changed later as the len functionality needs changed.
         let i = Component::get_index::<T>(indices, len);
-        match storage.read() {
-            Ok(map) => {
-                match map.get(&TypeId::of::<T>()) {
-                    Some(lvec) => {
-                        match lvec.write() {
-                            Ok(mut vec) => {
-                                if i == len {
-                                    vec.push(RwLock::new(Box::new(component)));
-                                } else {
-                                    vec[i] = RwLock::new(Box::new(component));
-                                }
-                            },
-                            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::insert || Error acquiring vector lock. {:#?}", e)))
-                        }
-                    },
-                    None => return Err(ErrEcs::ComponentMapNone(format!("Component::insert || Component map is None.")))
-                }
-            },
-            Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::insert || Error acquiring storage lock. {:#?}", e)))
+        if i > len { Component::allocate::<T>(i - len, storage); }
+        if let Err(e) = panic::catch_unwind(|| {
+            storage
+                .read().expect(Component::STORAGE_LOCK_ERROR_MSG)
+                .get(&TypeId::of::<T>()).expect(&format!("{} {}", Component::TYPE_NOT_FOUND_ERROR_MSG, type_name::<T>()))
+                .write().expect(Component::VECTOR_LOCK_ERROR_MSG)
+                .insert(i, RwLock::new(Box::new(component)));
+        }) {
+            Component::free_index::<T>(i, indices);
+            return Err(ErrEcs::ComponentInsert(format!("{:#?}", e)))
         }
         Ok(i)
     }
 
     //replaces a component at the given index with the given component.
-    pub fn set<T: Any + Send + Sync + Copy>(i: usize, component: T, storage: &ALComponentStorage) -> Result<(), ErrEcs>{
+    pub fn set<T>(i: usize, component: T, storage: &ALComponentStorage) -> Result<(), ErrEcs>
+    where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
         Component::check_initialized_component_vector::<T>(storage);
-        match storage.read() {
-            Ok(map) => {
-                match map.get(&TypeId::of::<T>()) {
-                    Some(lvec) => {
-                        match lvec.read() {
-                            Ok(vec) => {
-                                match vec.get(i) {
-                                    Some(lvalue) => {
-                                        match lvalue.write() {
-                                            Ok(mut value) => {
-                                                *value = Box::new(component);
-                                                Ok(())
-                                            },
-                                            Err(e) =>  Err(ErrEcs::ComponentLock(format!("Component::set || Error acquiring value lock. {:#?}", e)))
-                                        }
-                                    },
-                                    None => Err(ErrEcs::ComponentValueNone(format!("Component::set || Value in vector is None.")))
-                                }
-                            },
-                            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::set || Error acquiring vector lock. {:#?}", e)))
-                        }
-                    },
-                    None => Err(ErrEcs::ComponentMapNone(format!("Component::set || Component map is None.")))
-                }
-            },
-            Err(e) => Err(ErrEcs::ComponentLock(format!("Component::set || Error acquiring storage lock. {:#?}", e)))
+        if let Err(e) = panic::catch_unwind(|| {
+            *storage
+                .read().expect(Component::STORAGE_LOCK_ERROR_MSG)
+                .get(&TypeId::of::<T>()).expect(&format!("{} {}", Component::TYPE_NOT_FOUND_ERROR_MSG, type_name::<T>()))
+                .read().expect(Component::VECTOR_LOCK_ERROR_MSG)
+                .get(i).expect(&format!("{} index: {}, type: {}", Component::INDEX_OUT_OF_BOUNDS_ERROR_MSG, i, type_name::<T>()))
+                .write().expect(Component::ELEMENT_LOCK_ERROR_MSG) = Box::new(component);
+        }) {
+            return Err(ErrEcs::ComponentSet(format!("{:#?}", e)))
         }
+        Ok(())
     }
 
     //modifies the component using the provided function.
-    pub fn modify<T: Any + Send + Sync>(i: usize, storage: &ALComponentStorage, modify: Modify<T>) -> Result<(), ErrEcs> {
+    pub fn modify<T>(i: usize, storage: &ALComponentStorage, modify: Modify<T>) -> Result<(), ErrEcs>
+    where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
         Component::check_initialized_component_vector::<T>(storage);
         if !Component::is_empty::<T>(i, storage)? {
-            match storage.read() {
-                Ok(map) => {
-                    match map.get(&TypeId::of::<T>()) {
-                        Some(lvec) => {
-                            match lvec.read() {
-                                Ok(vec) => {
-                                    match vec.get(i) {
-                                        Some(lvalue) => {
-                                            match lvalue.write() {
-                                                Ok(mut value) => match value.downcast_mut::<T>() {
-                                                    Some(mut value) => {
-                                                        modify(value);
-                                                        Ok(())
-                                                    },
-                                                    None => Err(ErrEcs::ComponentDowncast(format!("Component::modify || Failed to mutably downcast to type: {:#?}", type_name::<T>())))
-                                                },
-                                                Err(e) =>  Err(ErrEcs::ComponentLock(format!("Component::modify || Error acquiring value lock. {:#?}", e)))
-                                            }
-                                        },
-                                        None => Err(ErrEcs::ComponentValueNone(format!("Component::modify || Value in vector is None.")))
-                                    }
-                                },
-                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::modify || Error acquiring vector lock. {:#?}", e)))
-                            }
-                        },
-                        None => Err(ErrEcs::ComponentMapNone(format!("Component::modify || Component map is None.")))
+            if let Err(e) = panic::catch_unwind(|| {
+                match storage
+                    .read().expect(Component::STORAGE_LOCK_ERROR_MSG)
+                    .get(&TypeId::of::<T>()).expect(&format!("{} {}", Component::TYPE_NOT_FOUND_ERROR_MSG, type_name::<T>()))
+                    .read().expect(Component::VECTOR_LOCK_ERROR_MSG)
+                    .get(i).expect(&format!("{} index: {}, type: {}", Component::INDEX_OUT_OF_BOUNDS_ERROR_MSG, i, type_name::<T>()))
+                    .write() {
+                        Ok(mut value) => modify(value.downcast_mut::<T>().expect(&format!("{} type: {}", Component::DOWNCAST_ERROR_MSG, type_name::<T>()))),
+                        Err(e) => panic!(Component::ELEMENT_LOCK_ERROR_MSG)
                     }
-                },
-                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::modify || Error acquiring storage lock. {:#?}", e)))
+            }) {
+                return Err(ErrEcs::ComponentModify(format!("{:#?}", e)))
             }
-        } else { Err(ErrEcs::ComponentEmpty(format!("Component::modify || Empty component: {:#?}", type_name::<T>()))) }
+            Ok(())
+        } else {
+            return Err(ErrEcs::ComponentEmpty(format!("Component::modify || Empty component: {}", type_name::<T>())))
+        }
     }
 
-    //reads the component at given index. NOTE: This works for now, but it required an additional + Copy trait...
-    pub fn read<T: Any + Send + Sync + Copy>(i: usize, storage: &ALComponentStorage) -> Result<T, ErrEcs> {
+    //reads the component at given index.
+    pub fn read<T>(i: usize, storage: &ALComponentStorage) -> Result<T, ErrEcs>
+    where T: Any + Send + Sync + Copy + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
         Component::check_initialized_component_vector::<T>(storage);
         if !Component::is_empty::<T>(i, storage)? {
-            match storage.read() {
-                Ok(map) => {
-                    match map.get(&TypeId::of::<T>()) {
-                        Some(lvec) => {
-                            match lvec.read() {
-                                Ok(vec) => {
-                                    match vec.get(i) {
-                                        Some(lvalue) => {
-                                            match lvalue.read() {
-                                                Ok(value) => match value.downcast_ref::<T>() {
-                                                    Some(value) => Ok(*value),
-                                                    None => Err(ErrEcs::ComponentDowncast(format!("Component::read || Failed to downcast to type: {:#?}", type_name::<T>())))
-                                                },
-                                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::read || Error acquiring value lock. {:#?}", e)))
-                                            }
-                                        },
-                                        None => Err(ErrEcs::ComponentValueNone(format!("Component::read || Value in vector is None.")))
-                                    }
-                                },
-                                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::read || Error acquiring vector lock. {:#?}", e)))
-                            }
-                        },
-                        None => Err(ErrEcs::ComponentMapNone(format!("Component::read || Component map is None.")))
-                    }
-                },
-                Err(e) => Err(ErrEcs::ComponentLock(format!("Component::read || Error acquiring storage lock. {:#?}", e)))
+            match panic::catch_unwind(|| -> T {
+                *storage
+                    .read().expect(Component::STORAGE_LOCK_ERROR_MSG)
+                    .get(&TypeId::of::<T>()).expect(&format!("{} {}", Component::TYPE_NOT_FOUND_ERROR_MSG, type_name::<T>()))
+                    .read().expect(Component::VECTOR_LOCK_ERROR_MSG)
+                    .get(i).expect(&format!("{} index: {}, type: {}", Component::INDEX_OUT_OF_BOUNDS_ERROR_MSG, i, type_name::<T>()))
+                    .read().expect(Component::ELEMENT_LOCK_ERROR_MSG)
+                    .downcast_ref::<T>().expect(&format!("{} type: {}", Component::DOWNCAST_ERROR_MSG, type_name::<T>()))
+
+            }) {
+                Ok(v) => Ok(v),
+                Err(e) => Err(ErrEcs::ComponentRead(format!("{:#?}", e)))
             }
-        } else { Err(ErrEcs::ComponentEmpty(format!("Component::modify || Empty component: {:#?}", type_name::<T>()))) }
+        } else {
+            return Err(ErrEcs::ComponentEmpty(format!("Component::read || Empty component: {}", type_name::<T>())))
+        }
     }
 
     //Empties, but doesn't deallocate, memory at index for a component type.
-    pub fn empty<T: Any + Send + Sync>(i: usize, storage: &ALComponentStorage, indices: &ALIndices) -> Result<(), ErrEcs> {
+    pub fn empty<T>(i: usize, storage: &ALComponentStorage, indices: &ALIndices) -> Result<(), ErrEcs>
+    where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
         Component::check_initialized_component_vector::<T>(storage);
-        match storage.read() {
+        /*match storage.read() {
             Ok(map) => {
                 match map.get(&TypeId::of::<T>()) {
                     Some(lvec) => {
@@ -198,14 +165,16 @@ impl Component {
                 }
             },
             Err(e) => return Err(ErrEcs::ComponentLock(format!("Component::empty || Error acquiring storage lock. {:#?}", e)))
-        }
+        }*/
         Component::free_index::<T>(i, indices);
         Ok(())
     }
 
     //returns the length of the underlying component vector by type.
-    pub fn len<T: Any + Send + Sync>(storage: &ALComponentStorage) -> Result<usize, ErrEcs> {
-        match storage.read() {
+    pub fn len<T>(storage: &ALComponentStorage) -> Result<usize, ErrEcs>
+    where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
+        /*match storage.read() {
             Ok(map) => {
                 match map.get(&TypeId::of::<T>()) {
                     Some(lvec) => {
@@ -220,13 +189,15 @@ impl Component {
                 }
             },
             Err(e) => Err(ErrEcs::ComponentLock(format!("Component::len || Error acquiring storage lock. {:#?}", e)))
-        }
+        }*/
     }
 
     //checks if the value of a type is empty.
-    fn is_empty<T: Any + Send + Sync>(i: usize, storage: &ALComponentStorage) -> Result<bool, ErrEcs> {
+    fn is_empty<T>(i: usize, storage: &ALComponentStorage) -> Result<bool, ErrEcs>
+    where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
+    {
         Component::check_initialized_component_vector::<T>(storage);
-        match storage.read() {
+        /*match storage.read() {
             Ok(map) => {
                 match map.get(&TypeId::of::<T>()) {
                     Some(lvec) => {
@@ -252,7 +223,12 @@ impl Component {
                 }
             },
             Err(e) => Err(ErrEcs::ComponentLock(format!("Component::is_empty || Error acquiring storage lock. {:#?}", e)))
-        }
+        }*/
+    }
+
+    //allocates space in the component vector.
+    fn allocate<T: Any + Send + Sync>(to: usize, storage: &ALComponentStorage) {
+        unimplemented!("derp")
     }
 
     //attempts to retrieve an index from freed indices. if it finds none, it uses the provided default index. returns the index it used.
