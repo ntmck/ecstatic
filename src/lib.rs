@@ -40,11 +40,10 @@ pub enum ErrEcs {
     ComponentModify(String),
     ComponentEmpty(String),
     ComponentRead(String),
+    ComponentLen(String),
 
     EntityComponentNone(String),
 
     LevelComponentInsert(String),
     LevelGetComponentIndex(String),
-
-    UnknownError,
 }

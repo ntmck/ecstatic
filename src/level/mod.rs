@@ -7,21 +7,23 @@ use crate::ErrEcs;
 struct Level {
     components: ALComponentStorage,
     indices: ALIndices,
+    lengths: ALLengths,
 }
 
 impl Level {
     pub fn new() -> Level {
-        let (c, i) = Component::new();
+        let (c, i, l) = Component::new();
         Level {
             components: c,
             indices: i,
+            lengths: l,
         }
     }
 
     pub fn ecinsert<T>(&self, entity: &ALEntity, component: T) -> Result<(), ErrEcs>
     where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
     {
-        match Component::insert::<T>(component, &self.components, &self.indices) {
+        match Component::insert::<T>(component, &self.components, &self.indices, &self.lengths) {
             Ok(i) => {
                 Entity::insert_component::<T>(entity, i);
                 Ok(())
@@ -54,7 +56,7 @@ impl Level {
         match Entity::get_component_index::<T>(entity) {
             Ok(i) => {
                 Entity::remove_component::<T>(entity);
-                Component::empty::<T>(i, &self.components, &self.indices)?;
+                Component::empty::<T>(i, &self.components, &self.indices, &self.lengths)?;
                 Ok(())
             },
             Err(e) => Err(ErrEcs::LevelGetComponentIndex(format!("Level could not get component type: {} from entity {} for reason: {:#?}\n", type_name::<T>(), entity.read().unwrap().id, e))),
@@ -64,7 +66,7 @@ impl Level {
     pub fn component_len<T>(&self) -> usize
     where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
     {
-        Component::len::<T>(&self.components).unwrap_or(0)
+        Component::len::<T>(&self.lengths).unwrap_or(0)
     }
 }
 
