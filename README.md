@@ -10,6 +10,5 @@ ECStatic is developed using Test-Driven Development to the best of my ability.
 ---
 ### Development Backlog
 - [x] Entity Management
-- [x] Scalable Component Storage and Management
-- [x] Memory Management for Component Storage
-- [ ] Scalable Systems Design and Transition to a multi-threaded engine.
+- [x] Scalable, Dynamically typed, and Thread Safe Component Storage
+- [ ] Scalable, Thread Safe Systems Design
