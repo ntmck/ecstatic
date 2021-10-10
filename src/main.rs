@@ -17,88 +17,97 @@ GNU General Public License for more details.
 For more details see: <http://www.gnu.org/licenses/>.
 
 */
-use std::any::Any;
 use std::sync::Arc;
 use std::marker::{Send, Sync};
-use std::panic;
+use std::any::Any;
+
+use lazy_static::lazy_static;
 
 pub mod data_structures;
-pub mod level;
+pub mod trait_common;
+
+use trait_common::*;
 
 // Implementations:
 use ecstatic_storage::*;
 
-pub trait ComponentStorage {
-    fn ecinsert<T>           (&self, id: u64, component: T)     where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe;
-    fn ecset<T>              (&self, id: u64, with: T)          where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe;
-    fn ecmodify<T>           (&self, id: u64, f: fn(&mut T))    where T: Any + Send + Sync + Copy + std::panic::UnwindSafe + std::panic::RefUnwindSafe;
-    fn ecread<T>             (&self, id: u64) -> T              where T: Any + Send + Sync + Copy + std::panic::UnwindSafe + std::panic::RefUnwindSafe;
-    fn ecempty<T>            (&self, id: u64)                   where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe;
-    fn capacity<T>           (&self) -> usize                   where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe;
-    fn len<T>                (&self) -> usize                   where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe;
-    fn compress_memory<T>    (&self)                            where T: Any + Send + Sync + Copy + std::panic::UnwindSafe + std::panic::RefUnwindSafe;
+pub struct Ecs {
+    ecstorage: Arc<EcstaticStorage>,
 }
-
-pub struct EcsStorage {
-    component_storage: Arc<EcstaticStorage>,
-}
-impl EcsStorage {
-    pub fn new() -> EcsStorage {
-        EcsStorage{
-            component_storage: EcstaticStorage::new(),
-        }
-    }
-}
-impl ComponentStorage for EcsStorage {
+impl ComponentStorage for Ecs {
     fn ecinsert<T>(&self, id: u64, component: T)
     where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
     {
-        self.component_storage.ecinsert::<T>(id, component).expect("Error on insert\n");
+        self.ecstorage.ecinsert::<T>(id, component).expect("Error on insert\n");
     }
 
     fn ecset<T>(&self, id: u64, with: T)
     where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
     {
-        self.component_storage.ecset::<T>(id, with).expect("Error on set\n");
+        self.ecstorage.ecset::<T>(id, with).expect("Error on set\n");
     }
 
     fn ecmodify<T>(&self, id: u64, f: fn(&mut T))
     where T: Any + Send + Sync + Copy + std::panic::UnwindSafe + std::panic::RefUnwindSafe
     {
-        self.component_storage.ecmodify::<T>(id, f).expect("Error on modify\n");
+        self.ecstorage.ecmodify::<T>(id, f).expect("Error on modify\n");
     }
 
     fn ecread<T>(&self, id: u64) -> T
     where T: Any + Send + Sync + Copy + std::panic::UnwindSafe + std::panic::RefUnwindSafe
     {
-        self.component_storage.ecread::<T>(id).expect("Error on read\n")
+        self.ecstorage.ecread::<T>(id).expect("Error on read\n")
     }
 
     fn ecempty<T>(&self, id: u64)
     where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
     {
-        self.component_storage.ecempty::<T>(id).expect("Error on empty\n");
+        self.ecstorage.ecempty::<T>(id).expect("Error on empty\n");
     }
 
     fn capacity<T>(&self) -> usize
     where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
     {
-        self.component_storage.capacity::<T>().expect("Error on capacity\n")
+        self.ecstorage.capacity::<T>().expect("Error on capacity\n")
     }
 
     fn len<T>(&self) -> usize
     where T: Any + Send + Sync + std::panic::UnwindSafe + std::panic::RefUnwindSafe
     {
-        self.component_storage.len::<T>().expect("Error on len\n")
+        self.ecstorage.len::<T>().expect("Error on len\n")
     }
 
     fn compress_memory<T>(&self)
     where T: Any + Send + Sync + Copy + std::panic::UnwindSafe + std::panic::RefUnwindSafe
     {
-        self.component_storage.compress_memory::<T>().expect("Error on memory\n");
+        self.ecstorage.compress_memory::<T>().expect("Error on memory\n");
+    }
+}
+impl StaticSystem<'static> for Ecs{}
+impl Ecs {
+    pub fn new() -> Ecs {
+        Ecs {
+            ecstorage: EcstaticStorage::new(),
+        }
     }
 }
 
-fn main() {
+//Used to guarantee lifetime of the ECS for systems to operate on it via multiple threads.
+lazy_static! {
+    static ref ECS: Ecs = {
+        Ecs::new()
+    };
+}
 
+fn main() {
+    ECS.ecstorage.ecinsert::<u8>(0, 2);
+    let (sx, handle) = ECS.system(|cs| {
+        print!("test: ");
+        print!("{}\n", cs.len::<u8>());
+    });
+    for _ in 0..10 {
+        sx.send(Signal::Pump);
+    }
+    sx.send(Signal::Stop);
+    handle.join();
 }
