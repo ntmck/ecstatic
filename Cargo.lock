@@ -5,3 +5,17 @@ version = 3
 [[package]]
 name = "ecstatic"
 version = "0.3.1"
+dependencies = [
+ "ecstatic_storage",
+ "lazy_static",
+]
+
+[[package]]
+name = "ecstatic_storage"
+version = "1.0.0"
+
+[[package]]
+name = "lazy_static"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
