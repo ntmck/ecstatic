@@ -5,8 +5,6 @@ ECStatic will not support any front-end or rendering, but is strictly an entity 
 
 The goal of the project is to have a light-weight, efficient, and easy to use game engine useful for quickly prototyping internal game logic for game designers.
 
-ECStatic is developed using Test-Driven Development to the best of my ability.
-
 ---
 ### Development Backlog
 - [x] Entity Management
