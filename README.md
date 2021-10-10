@@ -11,4 +11,6 @@ ECStatic is developed using Test-Driven Development to the best of my ability.
 ### Development Backlog
 - [x] Entity Management
 - [x] Scalable, Dynamically typed, and Thread Safe Component Storage
-- [ ] Scalable, Thread Safe Systems Design
+- [x] Scalable, Thread Safe Systems Design
+- [ ] Main Game Loop
+- [ ] Rendering through SDL
